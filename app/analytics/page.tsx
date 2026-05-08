@@ -41,7 +41,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Tests Taken', value: data.totalAttempts, icon: '📝', color: '#6366f1' },
           { label: 'Avg Accuracy', value: `${data.avgAccuracy}%`, icon: '🎯', color: data.avgAccuracy >= 70 ? '#10b981' : data.avgAccuracy >= 50 ? '#f59e0b' : '#ef4444' },
@@ -176,7 +176,7 @@ function AnalyticsLoading() {
       <div>
         <h1 className="text-3xl font-bold text-white">Analytics</h1>
       </div>
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="stat-card animate-pulse">
             <div className="h-8 w-16 rounded" style={{ background: 'rgba(255,255,255,0.08)' }}></div>

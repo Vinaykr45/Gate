@@ -89,7 +89,7 @@ export default async function LearnPage() {
       <div className="relative rounded-2xl overflow-hidden"
         style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.1) 0%, rgba(139,92,246,0.06) 100%)', border: '1px solid rgba(99,102,241,0.18)' }}>
         <div className="absolute inset-0 hero-grid opacity-30 pointer-events-none" />
-        <div className="relative p-8">
+        <div className="relative p-6 sm:p-8">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3"
@@ -104,7 +104,7 @@ export default async function LearnPage() {
             </div>
 
             {/* Progress summary */}
-            <div className="flex gap-4 shrink-0">
+            <div className="flex flex-wrap justify-center gap-4 shrink-0">
               <div className="card p-5 text-center min-w-[90px]" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
                 <div className="text-3xl font-black gradient-text">{overallPct}%</div>
                 <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Progress</div>
@@ -264,7 +264,7 @@ export default async function LearnPage() {
           </div>
         </div>
       ) : (
-        <div className="card p-16 text-center">
+        <div className="card p-8 sm:p-16 text-center">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4"
             style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)' }}>
             📚

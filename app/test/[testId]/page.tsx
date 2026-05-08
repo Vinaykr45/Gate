@@ -5,18 +5,10 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { formatTime, getDifficultyBg } from '@/lib/utils'
 import type { Question, Test } from '@/lib/types'
+import { ChevronLeft, ChevronRight, Bookmark, Send, Grid3X3, X } from 'lucide-react'
 
-interface TestQuestion {
-  id: string
-  order_num: number
-  question: Question
-}
-
-interface AnswerState {
-  selected_option: string | null
-  marked_review: boolean
-  time_spent: number
-}
+interface TestQuestion { id: string; order_num: number; question: Question }
+interface AnswerState { selected_option: string | null; marked_review: boolean; time_spent: number }
 
 export default function TestInterfacePage({ params }: { params: Promise<{ testId: string }> }) {
   const [test, setTest] = useState<Test | null>(null)
@@ -27,39 +19,26 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
-  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [showNavPanel, setShowNavPanel] = useState(false)
   const [questionStartTime, setQuestionStartTime] = useState(Date.now())
   const [testId, setTestId] = useState<string>('')
   const router = useRouter()
   const supabase = createClient()
 
-  useEffect(() => {
-    params.then((p) => setTestId(p.testId))
-  }, [params])
+  useEffect(() => { params.then((p) => setTestId(p.testId)) }, [params])
 
   useEffect(() => {
     if (!testId) return
     const fetchTest = async () => {
-      const { data: testData } = await supabase
-        .from('tests')
-        .select('*')
-        .eq('id', testId)
-        .single()
-
+      const { data: testData } = await supabase.from('tests').select('*').eq('id', testId).single()
       if (!testData) { router.push('/test'); return }
-
       const { data: tqs } = await supabase
-        .from('test_questions')
-        .select('id, order_num, question:questions(*)')
-        .eq('test_id', testId)
-        .order('order_num')
-
+        .from('test_questions').select('id, order_num, question:questions(*)')
+        .eq('test_id', testId).order('order_num')
       setTest(testData)
       setTimeLeft(testData.duration)
       const fetchedQuestions = (tqs as unknown as TestQuestion[]) || []
       setQuestions(fetchedQuestions)
-
-      // Init answers
       const initAnswers: Record<string, AnswerState> = {}
       fetchedQuestions.forEach((tq) => {
         initAnswers[tq.question.id] = { selected_option: null, marked_review: false, time_spent: 0 }
@@ -70,76 +49,49 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
     fetchTest()
   }, [testId, router, supabase])
 
-  // Countdown timer
   useEffect(() => {
-    if (loading || result || timeLeft <= 0) return
+    if (loading || timeLeft <= 0) return
     const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) { handleSubmit(); return 0 }
-        return prev - 1
-      })
+      setTimeLeft((prev) => { if (prev <= 1) { handleSubmit(); return 0 } return prev - 1 })
     }, 1000)
     return () => clearInterval(interval)
-  }, [loading, result, timeLeft])
+  }, [loading, timeLeft])
 
   const currentQuestion = questions[currentIdx]?.question
 
   const selectOption = (option: string) => {
     if (!currentQuestion) return
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: { ...prev[currentQuestion.id], selected_option: option },
-    }))
+    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], selected_option: option } }))
   }
 
   const toggleReview = () => {
     if (!currentQuestion) return
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: {
-        ...prev[currentQuestion.id],
-        marked_review: !prev[currentQuestion.id]?.marked_review,
-      },
-    }))
+    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], marked_review: !prev[currentQuestion.id]?.marked_review } }))
   }
 
   const goToQuestion = (idx: number) => {
-    // Save time spent on current question
     if (currentQuestion) {
       const elapsed = Math.floor((Date.now() - questionStartTime) / 1000)
-      setAnswers((prev) => ({
-        ...prev,
-        [currentQuestion.id]: {
-          ...prev[currentQuestion.id],
-          time_spent: (prev[currentQuestion.id]?.time_spent || 0) + elapsed,
-        },
-      }))
+      setAnswers((prev) => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], time_spent: (prev[currentQuestion.id]?.time_spent || 0) + elapsed } }))
     }
     setCurrentIdx(idx)
     setQuestionStartTime(Date.now())
+    setShowNavPanel(false)
   }
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return
     setSubmitting(true)
     setShowSubmitDialog(false)
-
     const submittedAnswers = Object.entries(answers).map(([question_id, ans]) => ({
-      question_id,
-      selected_option: ans.selected_option,
-      time_spent: ans.time_spent,
-      marked_review: ans.marked_review,
+      question_id, selected_option: ans.selected_option, time_spent: ans.time_spent, marked_review: ans.marked_review,
     }))
-
     const timeTaken = test ? test.duration - timeLeft : 0
-
     const res = await fetch('/api/submit-test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ testId, answers: submittedAnswers, timeTaken }),
     })
     const data = await res.json()
-
     if (res.ok && data.attemptId) {
       router.push(`/test/${testId}/results?attemptId=${data.attemptId}`)
     } else {
@@ -158,151 +110,203 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
     return 'question-nav-btn unanswered'
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-        <div className="text-center">
-          <svg className="animate-spin w-12 h-12 mx-auto mb-4" viewBox="0 0 24 24" fill="none" style={{ color: '#6366f1' }}>
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          <p style={{ color: 'var(--text-secondary)' }}>Loading your test...</p>
-        </div>
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 border-4 rounded-full mx-auto animate-spin" style={{ borderColor: 'rgba(99,102,241,0.2)', borderTopColor: '#6366f1' }} />
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your test…</p>
       </div>
-    )
-  }
+    </div>
+  )
 
-  // Result is now shown on the /results page; show loading state while redirecting
-  if (submitting && !showSubmitDialog) {
-    return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-primary)' }}>
-        <div className="text-center">
-          <svg className="animate-spin w-12 h-12 mx-auto mb-4" viewBox="0 0 24 24" fill="none" style={{ color: '#6366f1' }}>
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-          </svg>
-          <p style={{ color: 'var(--text-secondary)' }}>Submitting your test...</p>
-        </div>
+  if (submitting && !showSubmitDialog) return (
+    <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-primary)' }}>
+      <div className="text-center space-y-3">
+        <div className="w-12 h-12 border-4 rounded-full mx-auto animate-spin" style={{ borderColor: 'rgba(16,185,129,0.2)', borderTopColor: '#10b981' }} />
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Submitting your test…</p>
       </div>
-    )
-  }
+    </div>
+  )
 
   if (!currentQuestion) return null
 
   const currentAnswer = answers[currentQuestion.id]
   const answeredCount = Object.values(answers).filter((a) => a.selected_option).length
   const reviewCount = Object.values(answers).filter((a) => a.marked_review).length
+  const isLowTime = timeLeft < 300
+  const isWarnTime = timeLeft < 600
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
-      {/* Test Header */}
-      <header className="h-14 glass border-b flex items-center justify-between px-6 shrink-0"
-        style={{ borderColor: 'var(--border-subtle)' }}>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-white">{test?.title}</span>
-          <span className="badge badge-easy">Q {currentIdx + 1} / {questions.length}</span>
+
+      {/* ── Header ── */}
+      <header className="shrink-0 border-b px-3 sm:px-6 h-14 flex items-center justify-between gap-2"
+        style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs sm:text-sm font-semibold truncate max-w-[120px] sm:max-w-xs" style={{ color: 'var(--text-primary)' }}>
+            {test?.title}
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0"
+            style={{ background: 'rgba(99,102,241,0.12)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+            {currentIdx + 1}/{questions.length}
+          </span>
         </div>
 
-        {/* Timer */}
-        <div className={`flex items-center gap-2 px-4 py-2 rounded-xl font-mono font-bold text-lg ${
-          timeLeft < 300 ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-          timeLeft < 600 ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-          'text-indigo-300'
-        } border`}>
-          ⏱ {formatTime(timeLeft)}
-        </div>
+        <div className="flex items-center gap-2">
+          {/* Timer */}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono font-bold text-sm border shrink-0`}
+            style={isLowTime
+              ? { background: 'rgba(239,68,68,0.1)', borderColor: 'rgba(239,68,68,0.3)', color: '#ef4444' }
+              : isWarnTime
+              ? { background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.3)', color: '#f59e0b' }
+              : { background: 'rgba(99,102,241,0.08)', borderColor: 'rgba(99,102,241,0.2)', color: '#6366f1' }
+            }>
+            ⏱ {formatTime(timeLeft)}
+          </div>
 
-        <button onClick={() => setShowSubmitDialog(true)}
-          className="btn-primary text-sm px-4 py-2">
-          Submit Test
-        </button>
+          {/* Mobile nav toggle */}
+          <button onClick={() => setShowNavPanel(true)}
+            className="lg:hidden p-2 rounded-lg border transition-colors"
+            style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
+            <Grid3X3 className="w-4 h-4" />
+          </button>
+
+          <button onClick={() => setShowSubmitDialog(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold text-white shrink-0 transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+            <Send className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Submit</span>
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Question Panel */}
-        <main className="flex-1 overflow-y-auto p-6">
-          <div className="max-w-3xl mx-auto space-y-6">
-            {/* Question meta */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="badge badge-easy">{currentQuestion.subject}</span>
+
+        {/* ── Main Question Area ── */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
+
+            {/* Question Meta */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs px-2.5 py-1 rounded-lg font-semibold"
+                style={{ background: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid rgba(99,102,241,0.2)' }}>
+                {currentQuestion.subject}
+              </span>
               <span className="text-xs px-2.5 py-1 rounded-lg border"
-                style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>
+                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                 {currentQuestion.topic}
               </span>
-              <span className={`badge ${getDifficultyBg(currentQuestion.difficulty)} border`}>
+              <span className={`badge ${getDifficultyBg(currentQuestion.difficulty)} border text-xs`}>
                 {currentQuestion.difficulty}
               </span>
               {currentQuestion.year && (
                 <span className="text-xs px-2.5 py-1 rounded-lg border"
-                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-muted)' }}>
                   GATE {currentQuestion.year}
                 </span>
               )}
             </div>
 
-            {/* Question text */}
-            <div className="card p-6">
-              <p className="text-white text-base leading-relaxed font-medium">
+            {/* Question Text */}
+            <div className="rounded-2xl border p-5 sm:p-6"
+              style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+              <div className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+                Question {currentIdx + 1}
+              </div>
+              <p className="text-base leading-relaxed font-medium" style={{ color: 'var(--text-primary)' }}>
                 {currentQuestion.question_text}
               </p>
             </div>
 
             {/* Options */}
-            <div className="space-y-3">
-              {Object.entries(currentQuestion.options).map(([key, text]) => (
-                <button
-                  key={key}
-                  onClick={() => selectOption(key)}
-                  className={`question-option w-full text-left ${currentAnswer?.selected_option === key ? 'selected' : ''}`}>
-                  <div className={`w-8 h-8 rounded-lg border flex items-center justify-center text-sm font-bold shrink-0 ${
-                    currentAnswer?.selected_option === key
-                      ? 'border-indigo-400 text-indigo-300'
-                      : 'border-slate-600 text-slate-400'
-                  }`}
-                    style={currentAnswer?.selected_option === key ? { background: 'rgba(99,102,241,0.15)' } : {}}>
-                    {key}
-                  </div>
-                  <span className="text-sm leading-relaxed" style={{ color: currentAnswer?.selected_option === key ? '#f1f5f9' : 'var(--text-secondary)' }}>
-                    {text}
-                  </span>
-                </button>
-              ))}
+            <div className="space-y-2.5">
+              {Object.entries(currentQuestion.options).map(([key, text]) => {
+                const isSelected = currentAnswer?.selected_option === key
+                return (
+                  <button
+                    key={key}
+                    onClick={() => selectOption(key)}
+                    className="w-full text-left flex items-start gap-3 p-4 rounded-xl border transition-all duration-150 hover:scale-[1.005]"
+                    style={isSelected ? {
+                      background: 'rgba(99,102,241,0.1)',
+                      borderColor: '#6366f1',
+                      boxShadow: '0 0 0 1px rgba(99,102,241,0.3)',
+                    } : {
+                      background: 'var(--bg-card)',
+                      borderColor: 'var(--border-subtle)',
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0"
+                      style={isSelected ? {
+                        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                        color: 'white',
+                      } : {
+                        background: 'var(--bg-secondary)',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      {key}
+                    </div>
+                    <span className="text-sm leading-relaxed pt-1"
+                      style={{ color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                      {text as string}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
 
-            {/* Question actions */}
-            <div className="flex items-center justify-between">
-              <button onClick={toggleReview}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all border ${
-                  currentAnswer?.marked_review
-                    ? 'border-amber-500/30 text-amber-400'
-                    : 'border-white/10 text-slate-400'
-                }`}
-                style={currentAnswer?.marked_review ? { background: 'rgba(245,158,11,0.1)' } : { background: 'rgba(255,255,255,0.04)' }}>
-                🔖 {currentAnswer?.marked_review ? 'Marked for Review' : 'Mark for Review'}
+            {/* Actions Row */}
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <button
+                onClick={toggleReview}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-all"
+                style={currentAnswer?.marked_review ? {
+                  background: 'rgba(245,158,11,0.1)',
+                  borderColor: 'rgba(245,158,11,0.3)',
+                  color: '#f59e0b',
+                } : {
+                  background: 'var(--bg-card)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Bookmark className={`w-4 h-4 ${currentAnswer?.marked_review ? 'fill-current' : ''}`} />
+                <span className="hidden sm:inline">{currentAnswer?.marked_review ? 'Marked' : 'Mark Review'}</span>
               </button>
 
-              <div className="flex gap-3">
-                <button onClick={() => goToQuestion(Math.max(0, currentIdx - 1))}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => goToQuestion(Math.max(0, currentIdx - 1))}
                   disabled={currentIdx === 0}
-                  className="btn-secondary px-4 py-2 text-sm disabled:opacity-40">
-                  ← Prev
+                  className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium border transition-all disabled:opacity-30"
+                  style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}
+                >
+                  <ChevronLeft className="w-4 h-4" /> Prev
                 </button>
-                <button onClick={() => goToQuestion(Math.min(questions.length - 1, currentIdx + 1))}
+                <button
+                  onClick={() => goToQuestion(Math.min(questions.length - 1, currentIdx + 1))}
                   disabled={currentIdx === questions.length - 1}
-                  className="btn-primary px-4 py-2 text-sm disabled:opacity-40">
-                  Next →
+                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-30"
+                  style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}
+                >
+                  Next <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
         </main>
 
-        {/* Navigation Panel */}
-        <aside className="w-56 border-l overflow-y-auto p-4 hidden lg:block"
-          style={{ borderColor: 'var(--border-subtle)', background: 'var(--bg-secondary)' }}>
-          <p className="text-xs font-semibold uppercase mb-3" style={{ color: 'var(--text-muted)' }}>Questions</p>
-
-          <div className="grid grid-cols-5 gap-1.5 mb-4">
+        {/* ── Desktop Nav Sidebar ── */}
+        <aside className="hidden lg:flex flex-col w-56 border-l overflow-y-auto p-4 shrink-0"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
+            Questions
+          </p>
+          <div className="grid grid-cols-5 gap-1.5 mb-5">
             {questions.map((_, idx) => (
               <button key={idx} onClick={() => goToQuestion(idx)} className={getNavClass(idx)}>
                 {idx + 1}
@@ -311,15 +315,15 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
           </div>
 
           {/* Legend */}
-          <div className="space-y-2 mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-            <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Legend</p>
+          <div className="space-y-2 pt-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+            <p className="text-xs font-bold mb-2" style={{ color: 'var(--text-muted)' }}>Legend</p>
             {[
               { cls: 'question-nav-btn answered', label: 'Answered' },
               { cls: 'question-nav-btn unanswered', label: 'Not answered' },
               { cls: 'question-nav-btn review', label: 'Marked review' },
             ].map(({ cls, label }) => (
               <div key={label} className="flex items-center gap-2">
-                <div className={`${cls} !w-6 !h-6 !text-xs pointer-events-none`}>{' '}</div>
+                <div className={`${cls} !w-6 !h-6 !text-xs pointer-events-none`}> </div>
                 <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
               </div>
             ))}
@@ -327,37 +331,78 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
 
           {/* Stats */}
           <div className="mt-4 pt-4 border-t space-y-2" style={{ borderColor: 'var(--border-subtle)' }}>
-            <div className="flex justify-between text-xs">
-              <span style={{ color: 'var(--text-muted)' }}>Answered</span>
-              <span className="text-emerald-400 font-semibold">{answeredCount}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span style={{ color: 'var(--text-muted)' }}>Review</span>
-              <span className="text-amber-400 font-semibold">{reviewCount}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span style={{ color: 'var(--text-muted)' }}>Skipped</span>
-              <span className="text-slate-400 font-semibold">{questions.length - answeredCount}</span>
-            </div>
+            {[
+              { label: 'Answered', value: answeredCount, color: '#10b981' },
+              { label: 'Review', value: reviewCount, color: '#f59e0b' },
+              { label: 'Skipped', value: questions.length - answeredCount, color: 'var(--text-muted)' },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="flex justify-between text-xs">
+                <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                <span className="font-bold" style={{ color }}>{value}</span>
+              </div>
+            ))}
           </div>
         </aside>
       </div>
 
-      {/* Submit Dialog */}
+      {/* ── Mobile Navigation Drawer ── */}
+      {showNavPanel && (
+        <>
+          <div className="fixed inset-0 z-40 lg:hidden" style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={() => setShowNavPanel(false)} />
+          <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden rounded-t-2xl p-5 max-h-[80vh] overflow-y-auto"
+            style={{ background: 'var(--bg-secondary)', borderTop: '1px solid var(--border-subtle)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                All Questions
+              </p>
+              <button onClick={() => setShowNavPanel(false)}
+                className="p-1 rounded-lg" style={{ color: 'var(--text-muted)' }}>
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-2 mb-4">
+              {questions.map((_, idx) => (
+                <button key={idx} onClick={() => goToQuestion(idx)} className={getNavClass(idx)}>
+                  {idx + 1}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-4 pt-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+              <span className="text-xs" style={{ color: '#10b981' }}>✓ {answeredCount} answered</span>
+              <span className="text-xs" style={{ color: '#f59e0b' }}>🔖 {reviewCount} review</span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>— {questions.length - answeredCount} skipped</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ── Submit Dialog ── */}
       {showSubmitDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.8)' }}>
-          <div className="card p-8 max-w-md w-full mx-4 animate-slide-up">
-            <h3 className="text-xl font-bold text-white mb-2">Submit Test?</h3>
-            <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              You&apos;ve answered <strong className="text-white">{answeredCount}</strong> of <strong className="text-white">{questions.length}</strong> questions.
-              {questions.length - answeredCount > 0 && <span className="text-amber-400"> {questions.length - answeredCount} unattempted.</span>}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+          <div className="rounded-2xl border p-6 sm:p-8 max-w-md w-full animate-slide-up"
+            style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}>
+            <div className="text-4xl mb-4">📋</div>
+            <h3 className="text-xl font-black mb-2" style={{ color: 'var(--text-primary)' }}>Submit Test?</h3>
+            <p className="mb-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+              You&apos;ve answered <strong style={{ color: 'var(--text-primary)' }}>{answeredCount}</strong> of{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>{questions.length}</strong> questions.
             </p>
+            {questions.length - answeredCount > 0 && (
+              <p className="text-sm mb-5" style={{ color: '#f59e0b' }}>
+                ⚠️ {questions.length - answeredCount} questions are unattempted and will be skipped.
+              </p>
+            )}
             <div className="flex gap-3">
-              <button onClick={() => setShowSubmitDialog(false)} className="btn-secondary flex-1 py-3">
+              <button onClick={() => setShowSubmitDialog(false)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold border transition-all"
+                style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-secondary)' }}>
                 Continue Test
               </button>
-              <button onClick={handleSubmit} disabled={submitting} className="btn-primary flex-1 py-3">
-                {submitting ? 'Submitting...' : 'Submit & See Score'}
+              <button onClick={handleSubmit} disabled={submitting}
+                className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                {submitting ? 'Submitting…' : 'Submit & See Score'}
               </button>
             </div>
           </div>
