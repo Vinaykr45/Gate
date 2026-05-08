@@ -192,10 +192,16 @@ export default function TopicDetailPage({ params }: Props) {
     }
   }
 
-  const getYouTubeId = (url: string) => {
-    const match = url.match(/(?:v=|youtu\.be\/)([^&\n?#]+)/)
-    return match?.[1] ?? null
+  const getYouTubeEmbedUrl = (url: string) => {
+    const listMatch = url.match(/[?&]list=([^&\n?#]+)/)
+    const videoMatch = url.match(/(?:v=|youtu\.be\/)([^&\n?#]+)/)
+    if (listMatch && !videoMatch) return `https://www.youtube.com/embed/videoseries?list=${listMatch[1]}&autoplay=1`
+    if (listMatch && videoMatch) return `https://www.youtube.com/embed/${videoMatch[1]}?list=${listMatch[1]}&autoplay=1`
+    if (videoMatch) return `https://www.youtube.com/embed/${videoMatch[1]}?autoplay=1`
+    return ''
   }
+
+  const isPlaylist = (url: string) => /[?&]list=([^&\n?#]+)/.test(url)
 
   if (loading) {
     return (
@@ -285,7 +291,7 @@ export default function TopicDetailPage({ params }: Props) {
         <div className="space-y-4">
           <div className="grid sm:grid-cols-3 gap-4">
             {[
-              { label: 'Videos', value: videos.length, sub: `${watchedIds.size} watched`, icon: '🎥' },
+              { label: 'Videos & Playlists', value: videos.length, sub: `${watchedIds.size} completed`, icon: '🎥' },
               { label: 'Notes', value: notes.length, sub: `${notes.filter(n => n.bookmarked).length} bookmarked`, icon: '📝' },
               { label: 'My Notes', value: userNotes.length, sub: 'personal notes', icon: '✍️' },
             ].map(item => (
@@ -336,14 +342,14 @@ export default function TopicDetailPage({ params }: Props) {
           {videos.length === 0 && (
             <div className="card p-10 text-center" style={{ color: 'var(--text-muted)' }}>
               <Play className="w-10 h-10 mx-auto mb-3 opacity-40" />
-              No videos yet — add one above!
+              No videos or playlists yet — add one above!
             </div>
           )}
           {activeVideo && (
             <div className="card overflow-hidden">
               <div className="aspect-video w-full">
                 <iframe
-                  src={`https://www.youtube.com/embed/${getYouTubeId(activeVideo)}?autoplay=1`}
+                  src={getYouTubeEmbedUrl(activeVideo)}
                   className="w-full h-full"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                   allowFullScreen
@@ -354,23 +360,25 @@ export default function TopicDetailPage({ params }: Props) {
           <div className="space-y-3">
             {videos.map((video, i) => {
               const watched = watchedIds.has(video.id)
-              const ytId = getYouTubeId(video.youtube_url)
+              const playlist = isPlaylist(video.youtube_url)
               const mins = Math.floor(video.duration_seconds / 60)
               return (
                 <div key={video.id} className="card p-4 flex items-center gap-4">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
                     style={{ background: watched ? 'rgba(16,185,129,0.1)' : 'rgba(99,102,241,0.1)', color: watched ? '#10b981' : '#a5b4fc' }}>
-                    {watched ? '✓' : i + 1}
+                    {watched ? '✓' : playlist ? 'PL' : i + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{video.title}</div>
+                    <div className="font-medium text-sm truncate flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                      {video.title} {playlist && <span className="badge badge-medium text-[10px] px-1.5 shrink-0">Playlist</span>}
+                    </div>
                     {mins > 0 && <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{mins} min</div>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => { setActiveVideo(video.youtube_url); markVideoWatched(video.id) }}
                       className="btn-primary text-xs px-3 py-1.5">
-                      <Play className="w-3 h-3" /> Watch
+                      <Play className="w-3 h-3" /> {playlist ? 'Watch Playlist' : 'Watch'}
                     </button>
                     <a href={video.youtube_url} target="_blank" rel="noopener noreferrer" className="btn-ghost p-2">
                       <ExternalLink className="w-4 h-4" />
