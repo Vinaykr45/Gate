@@ -65,17 +65,17 @@ export default async function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="stat-card">
-            <div className="flex items-center justify-between">
-              <span className="text-2xl">{stat.icon}</span>
+          <div key={stat.label} className="stat-card p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xl sm:text-2xl">{stat.icon}</span>
               <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: stat.color }} />
             </div>
             <div>
-              <div className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{stat.value}</div>
-              <div className="text-sm font-semibold mt-1" style={{ color: 'var(--text-primary)' }}>{stat.label}</div>
-              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{stat.sub}</div>
+              <div className="text-2xl sm:text-3xl font-black" style={{ color: 'var(--text-primary)' }}>{stat.value}</div>
+              <div className="text-xs sm:text-sm font-semibold mt-1 line-clamp-1" style={{ color: 'var(--text-primary)' }}>{stat.label}</div>
+              <div className="text-[10px] sm:text-xs mt-0.5 line-clamp-1" style={{ color: 'var(--text-muted)' }}>{stat.sub}</div>
             </div>
           </div>
         ))}
@@ -86,19 +86,19 @@ export default async function DashboardPage() {
         {/* Quick Actions — 1 col */}
         <div className="space-y-4">
           <h2 className="section-title">Quick Actions</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             {QUICK_ACTIONS.map((action) => (
               <Link key={action.title} href={action.href}
-                className="card p-4 flex items-center gap-3 group cursor-pointer">
+                className="card overflow-hidden p-3.5 sm:p-4 flex items-center gap-3 group cursor-pointer">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
                   style={{ background: `${action.color}15`, border: `1px solid ${action.color}25` }}>
                   {action.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm group-hover:text-indigo-400 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                  <h3 className="font-semibold text-sm group-hover:text-indigo-400 transition-colors truncate" style={{ color: 'var(--text-primary)' }}>
                     {action.title}
                   </h3>
-                  <p className="text-xs mt-0.5 line-clamp-1 hidden sm:block" style={{ color: 'var(--text-secondary)' }}>{action.desc}</p>
+                  <p className="text-[11px] sm:text-xs mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{action.desc}</p>
                 </div>
                 <ArrowRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-1" style={{ color: 'var(--text-muted)' }} />
               </Link>
@@ -107,19 +107,19 @@ export default async function DashboardPage() {
 
           {/* Avg Score mini card */}
           {totalTests > 0 && (
-            <div className="card p-5" style={{ background: 'rgba(16,185,129,0.04)', borderColor: 'rgba(16,185,129,0.15)' }}>
+            <div className="card overflow-hidden p-5" style={{ background: 'rgba(16,185,129,0.04)', borderColor: 'rgba(16,185,129,0.15)' }}>
               <div className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: '#6ee7b7' }}>Avg Score</div>
-              <div className="text-3xl font-black" style={{ color: '#10b981' }}>{avgScore} <span className="text-base font-normal">/ 100</span></div>
-              <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>across {totalTests} tests</div>
+              <div className="text-3xl font-black truncate" style={{ color: '#10b981' }}>{avgScore} <span className="text-base font-normal">/ 100</span></div>
+              <div className="text-xs mt-1 truncate" style={{ color: 'var(--text-muted)' }}>across {totalTests} tests</div>
             </div>
           )}
         </div>
 
         {/* Recent Tests — 2 cols */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">Recent Tests</h2>
-            <Link href="/test" className="text-sm flex items-center gap-1 transition-colors"
+            <Link href="/test" className="text-sm flex items-center gap-1 transition-colors shrink-0"
               style={{ color: '#a5b4fc' }}>
               View all <ArrowRight className="w-3.5 h-3.5" />
             </Link>
@@ -129,20 +129,20 @@ export default async function DashboardPage() {
             <div className="card overflow-hidden">
               <div className="divide-y" style={{ borderColor: 'var(--border-subtle)' }}>
                 {recentTests.map((test) => (
-                  <div key={test.id} className="flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 hover:bg-indigo-500/[0.03] transition-colors">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base"
+                  <div key={test.id} className="flex items-center gap-2.5 sm:gap-3 px-3 sm:px-5 py-3 sm:py-4 hover:bg-indigo-500/[0.03] transition-colors w-full overflow-hidden">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 text-sm sm:text-base"
                       style={{
                         background: test.type === 'full' ? 'rgba(239,68,68,0.1)' : test.type === 'subject' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
                       }}>
                       {test.type === 'full' ? '🏆' : test.type === 'subject' ? '📚' : '🎯'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{test.title}</div>
-                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      <div className="text-[13px] sm:text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{test.title}</div>
+                      <div className="text-[11px] sm:text-xs mt-0.5 truncate" style={{ color: 'var(--text-muted)' }}>
                         {test.question_count}q · {formatDate(test.created_at)}
                       </div>
                     </div>
-                    <span className={`badge shrink-0 ${test.type === 'full' ? 'badge-hard' : test.type === 'subject' ? 'badge-medium' : 'badge-easy'}`}>
+                    <span className={`badge shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2.5 ${test.type === 'full' ? 'badge-hard' : test.type === 'subject' ? 'badge-medium' : 'badge-easy'}`}>
                       {test.type}
                     </span>
                   </div>

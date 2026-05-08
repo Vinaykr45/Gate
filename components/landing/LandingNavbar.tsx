@@ -88,10 +88,10 @@ export function LandingNavbar() {
           </Link>
           
           <button 
-            className="md:hidden"
+            className="md:hidden flex"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             style={{
-              width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
               background: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.07)',
               border: `1px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)'}`,
               cursor: 'pointer', color: isLight ? '#475569' : '#94a3b8', transition: 'all 0.2s',
