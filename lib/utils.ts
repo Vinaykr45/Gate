@@ -52,91 +52,178 @@ export function truncateText(text: string, maxLength: number): string {
 
 export function calculateScore(correct: number, total: number, negativeMarking = false): number {
   if (negativeMarking) {
-    // GATE marking: +1 for correct, -0.33 for wrong
     return correct // simplified for now
   }
   return correct
 }
 
-export const SUBJECTS = [
-  'Computer Science',
-  'Operating Systems',
-  'DBMS',
-  'Data Structures & Algorithms',
-  'Computer Networks',
+// ─────────────────────────────────────────────────────────────
+// GATE CSE Official Syllabus (2024-2025)
+// Section 1: General Aptitude (GA) — 15 marks
+// Section 2: Computer Science & IT — 85 marks
+// ─────────────────────────────────────────────────────────────
+
+export const GATE_SUBJECTS = [
+  'Engineering Mathematics',
+  'Digital Logic',
+  'Computer Organization & Architecture',
+  'Programming & Data Structures',
+  'Algorithms',
   'Theory of Computation',
-  'Mathematics',
+  'Compiler Design',
+  'Operating Systems',
+  'Databases',
+  'Computer Networks',
   'General Aptitude',
 ] as const
 
+// Alias kept for backward compatibility
+export const SUBJECTS = GATE_SUBJECTS
+
 export const TOPICS_BY_SUBJECT: Record<string, string[]> = {
-  'Computer Science': [
-    'Operating Systems',
-    'DBMS',
-    'Data Structures & Algorithms',
-    'Computer Networks',
-    'Theory of Computation',
-    'Compiler Design',
-    'Computer Organization',
+  'Engineering Mathematics': [
+    // Discrete Mathematics
+    'Propositional & First-Order Logic',
+    'Sets, Relations & Functions',
+    'Partial Orders & Lattices',
+    'Groups & Monoids',
+    'Graph Theory – Connectivity & Matching',
+    'Combinatorics – Counting & Recurrences',
+    // Linear Algebra
+    'Matrices & Determinants',
+    'System of Linear Equations',
+    'Eigenvalues & Eigenvectors',
+    'LU Decomposition',
+    // Calculus
+    'Limits, Continuity & Differentiability',
+    'Maxima & Minima',
+    'Mean Value Theorem',
+    'Integration',
+    // Probability & Statistics
+    'Random Variables & Distributions',
+    'Mean, Median, Mode & Standard Deviation',
+    'Conditional Probability & Bayes Theorem',
+    'Binomial, Poisson & Normal Distributions',
   ],
-  'Operating Systems': [
-    'Process Management',
-    'CPU Scheduling',
-    'Deadlock',
-    'Memory Management',
-    'File Systems',
-    'Paging & Segmentation',
-    'Synchronization',
+
+  'Digital Logic': [
+    'Boolean Algebra & Logic Gates',
+    'Combinational Circuits – Minimization',
+    'Multiplexers, Decoders & Encoders',
+    'Sequential Circuits – Flip-Flops & Counters',
+    'Number Representations (Binary, Hex, BCD)',
+    'Fixed-Point & Floating-Point Arithmetic',
   ],
-  'DBMS': [
-    'Relational Model',
-    'Normalization',
-    'SQL',
-    'Transactions & Concurrency',
-    'Indexing & Hashing',
-    'Query Processing',
-    'ER Model',
+
+  'Computer Organization & Architecture': [
+    'Machine Instructions & Addressing Modes',
+    'ALU Design & Data-Path',
+    'Control Unit – Hardwired & Microprogrammed',
+    'Instruction Pipelining',
+    'Pipeline Hazards (Structural, Data, Control)',
+    'Cache Memory – Mapping & Replacement',
+    'Main Memory & Virtual Memory',
+    'Secondary Storage',
+    'I/O Interface – Interrupt & DMA',
   ],
-  'Data Structures & Algorithms': [
+
+  'Programming & Data Structures': [
+    'Programming in C – Basics & Pointers',
+    'Recursion',
     'Arrays & Strings',
+    'Stacks & Queues',
+    'Linked Lists',
     'Trees & Binary Trees',
-    'Graphs',
-    'Sorting & Searching',
-    'Dynamic Programming',
+    'Binary Search Trees (BST)',
+    'Binary Heaps',
+    'Graphs – Representation & Traversal',
+  ],
+
+  'Algorithms': [
+    'Asymptotic Complexity – Time & Space',
+    'Searching & Sorting',
     'Hashing',
-    'Heaps & Priority Queues',
-    'Recursion & Backtracking',
+    'Divide & Conquer',
+    'Greedy Algorithms',
+    'Dynamic Programming',
+    'Graph Algorithms – BFS & DFS',
+    'Minimum Spanning Tree (Prim, Kruskal)',
+    'Shortest Paths (Dijkstra, Bellman-Ford)',
+    'NP-Completeness',
   ],
-  'Computer Networks': [
-    'OSI & TCP/IP Model',
-    'Data Link Layer',
-    'Network Layer & Routing',
-    'Transport Layer',
-    'Application Layer',
-    'Congestion Control',
-    'MAC Protocols',
-  ],
+
   'Theory of Computation': [
-    'Regular Languages & DFA',
-    'Context-Free Languages & PDA',
+    'Regular Expressions & Finite Automata (DFA/NFA)',
+    'Regular Languages & Pumping Lemma',
+    'Context-Free Grammars & Pushdown Automata',
+    'Context-Free Languages & Pumping Lemma',
     'Turing Machines',
-    'Complexity Theory',
-    'Decidability',
+    'Decidability & Undecidability',
+    'Complexity Classes – P, NP',
   ],
-  'Mathematics': [
-    'Linear Algebra',
-    'Calculus',
-    'Probability & Statistics',
-    'Combinatorics',
-    'Discrete Mathematics',
-    'Graph Theory',
-    'Set Theory',
+
+  'Compiler Design': [
+    'Lexical Analysis & Tokenization',
+    'Parsing – LL & LR Grammars',
+    'Syntax-Directed Translation',
+    'Runtime Environments',
+    'Intermediate Code Generation',
+    'Local Code Optimization',
   ],
+
+  'Operating Systems': [
+    'Processes & Threads',
+    'Inter-Process Communication',
+    'Concurrency & Synchronization',
+    'Deadlock – Detection, Prevention & Avoidance',
+    'CPU Scheduling Algorithms',
+    'Memory Management & Paging',
+    'Virtual Memory & Page Replacement',
+    'File Systems & I/O Management',
+  ],
+
+  'Databases': [
+    'ER Model',
+    'Relational Model & Relational Algebra',
+    'Tuple Relational Calculus',
+    'SQL – Queries, Joins & Subqueries',
+    'Integrity Constraints',
+    'Normal Forms – 1NF to BCNF',
+    'File Organization & Indexing (B/B+ Trees)',
+    'Transactions & ACID Properties',
+    'Concurrency Control – 2PL & Locking',
+  ],
+
+  'Computer Networks': [
+    'OSI & TCP/IP Reference Models',
+    'Data Link Layer – Framing & Error Detection',
+    'MAC Protocols (ALOHA, CSMA)',
+    'Network Layer – IPv4 & CIDR',
+    'Routing Algorithms (Distance Vector, Link State)',
+    'Transport Layer – UDP & TCP',
+    'TCP Congestion Control',
+    'Application Layer – DNS, HTTP, SMTP, FTP',
+  ],
+
   'General Aptitude': [
-    'Verbal Ability',
-    'Numerical Aptitude',
-    'Logical Reasoning',
-    'Data Interpretation',
-    'Analytical Puzzles',
+    // Verbal
+    'English Grammar & Vocabulary',
+    'Reading Comprehension',
+    'Sentence Completion & Correction',
+    // Quantitative
+    'Number System & Arithmetic',
+    'Percentages, Profit & Loss',
+    'Ratio, Proportion & Mixtures',
+    'Time, Speed & Distance',
+    'Work & Time',
+    'Permutations & Combinations',
+    'Probability Basics',
+    'Data Interpretation – Graphs & Tables',
+    // Analytical
+    'Logical Deduction & Induction',
+    'Analogies & Classification',
+    'Numerical Reasoning',
+    // Spatial
+    'Pattern Recognition & Spatial Reasoning',
   ],
 }

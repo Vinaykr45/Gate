@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, FileText, BarChart2,
   Sparkles, BookOpen, LogOut, Menu, X,
-  FlaskConical, TrendingUp,
+  FlaskConical, TrendingUp, History, PlusCircle
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 
@@ -18,6 +18,7 @@ const NAV_SECTIONS = [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/learn', label: 'Learning Hub', icon: BookOpen },
       { href: '/test', label: 'Mock Tests', icon: FileText },
+      { href: '/test-history', label: 'Test History', icon: History },
     ],
   },
   {
@@ -25,6 +26,12 @@ const NAV_SECTIONS = [
     items: [
       { href: '/analytics', label: 'Analytics', icon: BarChart2 },
       { href: '/insights', label: 'AI Insights', icon: Sparkles },
+    ],
+  },
+  {
+    label: 'Manage',
+    items: [
+      { href: '/dashboard/add-pyq', label: 'Add PYQ', icon: PlusCircle },
     ],
   },
 ]
@@ -92,9 +99,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon
-                  const isActive = item.href === '/dashboard'
-                    ? pathname === '/dashboard'
-                    : pathname.startsWith(item.href)
+                  let isActive = false
+                  if (item.href === '/dashboard') {
+                    isActive = pathname === '/dashboard'
+                  } else if (item.href === '/test') {
+                    isActive = pathname === '/test'
+                  } else if (item.href === '/test-history') {
+                    isActive = pathname === '/test-history' || pathname.startsWith('/test-history/') || (pathname.startsWith('/test/') && pathname.includes('/results'))
+                  } else {
+                    isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                  }
                   return (
                     <Link key={item.href} href={item.href}
                       className={`nav-item ${isActive ? 'active' : ''}`}
@@ -195,7 +209,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 md:p-8">
             {children}
           </div>
         </main>

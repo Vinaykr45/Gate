@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { SUBJECTS, TOPICS_BY_SUBJECT } from '@/lib/utils'
-import { FlaskConical, Target, BookOpen, Trophy, ChevronDown, Loader2 } from 'lucide-react'
+import { FlaskConical, Target, BookOpen, Trophy, ChevronDown, Loader2, AlertCircle, Database } from 'lucide-react'
+import { GATE_SUBJECTS, TOPICS_BY_SUBJECT } from '@/lib/utils'
 
 const TEST_TYPES = [
   {
@@ -29,7 +29,7 @@ const TEST_TYPES = [
   {
     id: 'full' as const,
     label: 'Full GATE Mock',
-    desc: 'Complete simulation exam',
+    desc: 'All subjects combined',
     icon: Trophy,
     color: '#f59e0b',
     bg: 'rgba(245,158,11,0.1)',
@@ -45,17 +45,79 @@ const DIFFICULTY_OPTIONS = [
   { val: 'hard', label: 'Hard', desc: 'GATE-level hard' },
 ]
 
+interface AvailableData {
+  subjects: string[]
+  topicsBySubject: Record<string, string[]>
+  totalQuestions: number
+  counts: { total: number; bySubject: Record<string, number>; bySubjectTopic: Record<string, number> }
+}
+
 export default function TestPage() {
   const [testType, setTestType] = useState<'topic' | 'subject' | 'full'>('topic')
-  const [selectedSubject, setSelectedSubject] = useState('Computer Science')
+  const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedTopic, setSelectedTopic] = useState('')
   const [questionCount, setQuestionCount] = useState(20)
   const [difficulty, setDifficulty] = useState('')
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
+  const [available, setAvailable] = useState<AvailableData>({ subjects: [], topicsBySubject: {}, totalQuestions: 0, counts: { total: 0, bySubject: {}, bySubjectTopic: {} } })
+  const [loadingOptions, setLoadingOptions] = useState(true)
   const router = useRouter()
 
-  const topics = TOPICS_BY_SUBJECT[selectedSubject] || []
+  useEffect(() => {
+    async function fetchOptions() {
+      try {
+        const res = await fetch('/api/questions/available')
+        const data = await res.json()
+        if (data.subjects && data.topicsBySubject) {
+          setAvailable({
+            subjects: data.subjects,
+            topicsBySubject: data.topicsBySubject,
+            totalQuestions: data.totalQuestions || 0,
+            counts: data.counts || { total: 0, bySubject: {}, bySubjectTopic: {} }
+          })
+          if (data.subjects.length > 0) {
+            setSelectedSubject(data.subjects[0])
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load question options:', err)
+      } finally {
+        setLoadingOptions(false)
+      }
+    }
+    fetchOptions()
+  }, [])
+
+  // Reset topic when subject changes
+  useEffect(() => {
+    setSelectedTopic('')
+  }, [selectedSubject])
+
+  const topics = available.topicsBySubject[selectedSubject] || []
+  const selectedType = TEST_TYPES.find(t => t.id === testType)!
+  const hasQuestions = available.subjects.length > 0
+
+  let maxQuestions = 65
+  if (testType === 'full') {
+    maxQuestions = Math.min(65, available.counts.total)
+  } else if (testType === 'subject' && selectedSubject) {
+    maxQuestions = Math.min(65, available.counts.bySubject[selectedSubject] || 0)
+  } else if (testType === 'topic' && selectedSubject) {
+    if (selectedTopic) {
+      maxQuestions = Math.min(65, available.counts.bySubjectTopic[`${selectedSubject}|${selectedTopic}`] || 0)
+    } else {
+      maxQuestions = Math.min(65, available.counts.bySubject[selectedSubject] || 0)
+    }
+  }
+  if (maxQuestions < 5) maxQuestions = 5 // keep a floor of 5 to avoid rendering errors
+
+  // Keep question count within bounds
+  useEffect(() => {
+    if (questionCount > maxQuestions) {
+      setQuestionCount(maxQuestions)
+    }
+  }, [maxQuestions, questionCount])
 
   const handleGenerate = async () => {
     setGenerating(true)
@@ -64,7 +126,7 @@ export default function TestPage() {
     const body = {
       type: testType,
       subject: testType !== 'full' ? selectedSubject : undefined,
-      topic: testType === 'topic' ? selectedTopic : undefined,
+      topic: testType === 'topic' ? (selectedTopic || undefined) : undefined,
       count: questionCount,
       difficulty: difficulty || undefined,
     }
@@ -76,27 +138,51 @@ export default function TestPage() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to generate test')
+      if (!res.ok) throw new Error(data.error || 'Failed to start test')
       router.push(`/test/${data.testId}`)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to generate test')
+      setError(err instanceof Error ? err.message : 'Failed to start test')
       setGenerating(false)
     }
   }
-
-  const selectedType = TEST_TYPES.find(t => t.id === testType)!
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-black" style={{ color: 'var(--text-primary)' }}>
-          Generate Mock Test
+          Mock Test
         </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Configure your test parameters — AI generates fresh GATE-style questions instantly
+          Shuffles & compiles from your question bank — no AI generation needed
         </p>
       </div>
+
+      {/* No questions warning */}
+      {!loadingOptions && !hasQuestions && (
+        <div className="rounded-xl border p-5 flex items-start gap-3"
+          style={{ background: 'rgba(245,158,11,0.06)', borderColor: 'rgba(245,158,11,0.2)' }}>
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-amber-400" />
+          <div>
+            <p className="font-semibold text-sm text-amber-400">No questions in the bank</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Upload GATE question PDFs or images first to populate the question bank.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Question bank info */}
+      {!loadingOptions && hasQuestions && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs"
+          style={{ background: 'rgba(99,102,241,0.05)', borderColor: 'rgba(99,102,241,0.15)', color: 'var(--text-secondary)' }}>
+          <Database className="w-3.5 h-3.5" style={{ color: '#818cf8' }} />
+          <span>
+            <span className="font-semibold" style={{ color: '#818cf8' }}>{available.subjects.length} subject{available.subjects.length !== 1 ? 's' : ''}</span>
+            {' '}available in question bank
+          </span>
+        </div>
+      )}
 
       {/* Test Type Selection */}
       <div>
@@ -143,9 +229,10 @@ export default function TestPage() {
       {testType !== 'full' && (
         <div className="rounded-xl border p-5 space-y-4" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}>
           <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            Select Subject
+            {testType === 'topic' ? 'Subject & Topic' : 'Subject'}
           </h2>
 
+          {/* Subject */}
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
               Subject
@@ -154,52 +241,68 @@ export default function TestPage() {
               <select
                 id="subject-select"
                 value={selectedSubject}
-                onChange={(e) => { setSelectedSubject(e.target.value); setSelectedTopic('') }}
-                className="w-full appearance-none pr-10 rounded-xl py-3 px-4 text-sm font-medium border transition-colors"
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                disabled={loadingOptions || !hasQuestions}
+                className="w-full appearance-none pr-10 rounded-xl py-3 px-4 text-sm font-medium border transition-colors disabled:opacity-50 cursor-pointer"
                 style={{
                   background: 'var(--bg-secondary)',
                   borderColor: 'var(--border)',
                   color: 'var(--text-primary)',
                 }}
               >
-                {SUBJECTS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+                {loadingOptions ? (
+                  <option>Loading…</option>
+                ) : !hasQuestions ? (
+                  <option>No questions available</option>
+                ) : (
+                  available.subjects.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))
+                )}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
             </div>
           </div>
 
+          {/* Topic (only for topic-wise) */}
           {testType === 'topic' && (
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Topic <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>(optional — leave blank for all topics)</span>
+                Topic{' '}
+                <span className="text-xs font-normal" style={{ color: 'var(--text-muted)' }}>
+                  (optional — leave blank for all topics in subject)
+                </span>
               </label>
               <div className="relative">
                 <select
-                  id="topic-select"
                   value={selectedTopic}
                   onChange={(e) => setSelectedTopic(e.target.value)}
-                  className="w-full appearance-none pr-10 rounded-xl py-3 px-4 text-sm font-medium border transition-colors"
+                  disabled={!selectedSubject || topics.length === 0}
+                  className="w-full appearance-none pr-10 rounded-xl py-3 px-4 text-sm font-medium border transition-colors disabled:opacity-50 cursor-pointer"
                   style={{
                     background: 'var(--bg-secondary)',
                     borderColor: 'var(--border)',
                     color: 'var(--text-primary)',
                   }}
                 >
-                  <option value="">All topics in {selectedSubject}</option>
+                  <option value="">All Topics</option>
                   {topics.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
               </div>
+              {topics.length > 0 && (
+                <p className="mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  {topics.length} topic{topics.length !== 1 ? 's' : ''} available in this subject
+                </p>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Options */}
+      {/* Configure Test */}
       <div className="rounded-xl border p-5 space-y-5" style={{ background: 'var(--bg-card)', borderColor: 'var(--border-subtle)' }}>
         <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
           Configure Test
@@ -213,49 +316,53 @@ export default function TestPage() {
                 Questions
               </label>
               <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
-                How many questions do you want to attempt?
+                How many questions to attempt?
               </div>
             </div>
             <div className="text-4xl font-black" style={{ color: selectedType.color }}>
               {questionCount}
             </div>
           </div>
-          
+
           <div className="relative pt-2 pb-2">
             <input
               id="question-count"
               type="range"
               min={5}
-              max={65}
+              max={maxQuestions}
               step={5}
               value={questionCount}
               onChange={(e) => setQuestionCount(parseInt(e.target.value))}
               className="w-full h-2 rounded-full appearance-none cursor-pointer relative z-10 transition-all"
-              style={{ 
-                background: `linear-gradient(to right, ${selectedType.color} ${(questionCount - 5) / (65 - 5) * 100}%, var(--border) ${(questionCount - 5) / (65 - 5) * 100}%)`,
+              style={{
+                background: `linear-gradient(to right, ${selectedType.color} ${(questionCount - 5) / (maxQuestions - 5 || 1) * 100}%, var(--border) ${(questionCount - 5) / (maxQuestions - 5 || 1) * 100}%)`,
               }}
             />
           </div>
-          
+
           <div className="flex justify-between text-xs mt-3 font-semibold relative w-full" style={{ color: 'var(--text-muted)' }}>
-            <span className="flex flex-col items-start gap-1.5 absolute left-0">
-              <span className="w-1.5 h-1.5 rounded-full ml-1" style={{ background: questionCount >= 5 ? selectedType.color : 'var(--border-subtle)' }}></span>
-              <span className="leading-tight text-left">5<br/><span className="text-[10px] opacity-75 font-medium">Quick</span></span>
-            </span>
-            <span className="flex flex-col items-center gap-1.5 w-16 text-center absolute" style={{ left: '25%', transform: 'translateX(-50%)' }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: questionCount >= 20 ? selectedType.color : 'var(--border-subtle)' }}></span>
-              <span className="leading-tight">20<br/><span className="text-[10px] opacity-75 font-medium">Standard</span></span>
-            </span>
-            <span className="flex flex-col items-center gap-1.5 w-16 text-center absolute" style={{ left: '58.33%', transform: 'translateX(-50%)' }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: questionCount >= 40 ? selectedType.color : 'var(--border-subtle)' }}></span>
-              <span className="leading-tight">40<br/><span className="text-[10px] opacity-75 font-medium">Extended</span></span>
-            </span>
-            <span className="flex flex-col items-end gap-1.5 absolute right-0">
-              <span className="w-1.5 h-1.5 rounded-full mr-2" style={{ background: questionCount >= 65 ? selectedType.color : 'var(--border-subtle)' }}></span>
-              <span className="leading-tight text-right">65<br/><span className="text-[10px] opacity-75 font-medium">Full GATE</span></span>
-            </span>
+            {[
+              { val: 5, label: 'Quick' },
+              { val: 20, label: 'Standard' },
+              { val: 40, label: 'Extended' },
+              { val: 65, label: 'Full GATE' },
+            ]
+              .filter(m => m.val < maxQuestions)
+              .concat([{ val: maxQuestions, label: maxQuestions === 65 ? 'Full GATE' : 'Max' }])
+              .map((m, i, arr) => {
+                const posPercent = maxQuestions > 5 ? ((m.val - 5) / (maxQuestions - 5) * 100) : 0;
+                const isFirst = i === 0;
+                const isLast = i === arr.length - 1;
+                return (
+                  <span key={m.val} className={`flex flex-col gap-1.5 absolute ${isFirst ? 'items-start' : isLast ? 'items-end' : 'items-center -translate-x-1/2'}`} 
+                        style={{ left: isLast ? 'auto' : `${posPercent}%`, right: isLast ? '0' : 'auto' }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: questionCount >= m.val ? selectedType.color : 'var(--border-subtle)' }} />
+                    <span className="leading-tight">{m.val}<br /><span className="text-[10px] opacity-75 font-medium">{m.label}</span></span>
+                  </span>
+                )
+            })}
           </div>
-          <div className="h-8"></div> {/* Spacer for the absolute positioned text */}
+          <div className="h-8" />
         </div>
 
         {/* Difficulty */}
@@ -314,35 +421,41 @@ export default function TestPage() {
       {/* Error */}
       {error && (
         <div
-          className="p-4 rounded-xl text-sm border"
+          className="p-4 rounded-xl text-sm border flex items-center gap-2"
           style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.2)', color: '#ef4444' }}
         >
-          ⚠️ {error}
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
         </div>
       )}
 
-      {/* Generate Button */}
+      {/* Start Button */}
       <button
         onClick={handleGenerate}
-        disabled={generating}
-        className="w-full py-4 rounded-2xl font-bold text-base text-white flex items-center justify-center gap-3 transition-all duration-200 hover:opacity-90 hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
+        disabled={generating || !hasQuestions || loadingOptions}
+        className="w-full py-4 rounded-2xl font-bold text-base flex items-center justify-center gap-3 transition-all duration-200 hover:opacity-90 hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100"
         style={{
-          background: generating
+          background: generating || !hasQuestions
             ? 'var(--bg-secondary)'
             : `linear-gradient(135deg, ${selectedType.color}, #6366f1)`,
-          boxShadow: generating ? 'none' : `0 8px 32px ${selectedType.color}40`,
-          color: generating ? 'var(--text-muted)' : 'white',
+          boxShadow: generating || !hasQuestions ? 'none' : `0 8px 32px ${selectedType.color}40`,
+          color: generating || !hasQuestions ? 'var(--text-muted)' : 'white',
         }}
       >
         {generating ? (
           <>
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span>Generating {questionCount} questions…</span>
+            <span>Compiling {questionCount} questions…</span>
+          </>
+        ) : !hasQuestions ? (
+          <>
+            <AlertCircle className="w-5 h-5" />
+            <span>No questions available</span>
           </>
         ) : (
           <>
             <FlaskConical className="w-5 h-5" />
-            <span>Generate {questionCount}-Question Test</span>
+            <span>Start {questionCount}-Question Test</span>
           </>
         )}
       </button>

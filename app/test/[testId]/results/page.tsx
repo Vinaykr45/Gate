@@ -12,7 +12,7 @@ import {
 interface Question {
   id: string; question_text: string; options: Record<string, string>
   correct_answer: string; subject: string; topic: string
-  difficulty: string; explanation?: string | Record<string, string>
+  difficulty: string; explanation?: string | Record<string, string>; year?: number
 }
 interface Answer {
   question_id: string; selected_option?: string; is_correct: boolean
@@ -30,16 +30,30 @@ function getExplanationText(exp: string | Record<string, string> | undefined | n
   if (!exp) return ''
   if (typeof exp === 'string') {
     // Try to parse if it looks like JSON
-    const trimmed = exp.trim()
+    let trimmed = exp.trim()
+    if (trimmed.startsWith('```json')) trimmed = trimmed.replace(/^```json/i, '')
+    if (trimmed.startsWith('```')) trimmed = trimmed.replace(/^```/, '')
+    if (trimmed.endsWith('```')) trimmed = trimmed.replace(/```$/, '')
+    trimmed = trimmed.trim()
+    
     if (trimmed.startsWith('{')) {
       try {
         const parsed = JSON.parse(trimmed)
         return parsed.explanation || parsed.text || parsed.content || Object.values(parsed)[0] || exp
       } catch {
+        // Regex fallback for truncated JSON strings
+        const match = trimmed.match(/"(?:explanation|text|content)"\s*:\s*"([^]+)/i)
+        if (match && match[1]) {
+           let val = match[1]
+           if (val.endsWith('"}')) val = val.slice(0, -2)
+           else if (val.endsWith('"')) val = val.slice(0, -1)
+           // Clean up any remaining escaped newlines or quotes
+           return val.replace(/\\n/g, '\n').replace(/\\"/g, '"')
+        }
         return exp
       }
     }
-    return exp
+    return trimmed
   }
   if (typeof exp === 'object') {
     return exp.explanation || exp.text || exp.content || Object.values(exp)[0] || ''
@@ -84,6 +98,12 @@ function QuestionCard({ answer, idx }: { answer: Answer; idx: number }) {
             {q.difficulty}
           </span>
           <span className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{q.topic}</span>
+          {q.year && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0"
+              style={{ background: 'var(--bg-card)', color: 'var(--text-muted)', borderColor: 'var(--border-subtle)' }}>
+              GATE {q.year}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -117,9 +137,15 @@ function QuestionCard({ answer, idx }: { answer: Answer; idx: number }) {
           {/* Options */}
           <div className="pt-4 space-y-2">
             {Object.entries(q.options).map(([key, value]) => {
-              const isChosen = answer.selected_option === key
-              const isRight = q.correct_answer === key
-              const isWrongChoice = isChosen && !isCorrect
+              if (key === '_type') return null
+              
+              const isMSQ = q.options._type === 'MSQ'
+              const chosenArr = answer.selected_option ? answer.selected_option.split(',') : []
+              const rightArr = q.correct_answer ? q.correct_answer.split(',') : []
+              
+              const isChosen = isMSQ ? chosenArr.includes(key) : answer.selected_option === key
+              const isRight = isMSQ ? rightArr.includes(key) : q.correct_answer === key
+              const isWrongChoice = isChosen && !isRight
 
               let bg = 'var(--bg-secondary)'
               let border = 'var(--border-subtle)'
@@ -198,7 +224,7 @@ function QuestionCard({ answer, idx }: { answer: Answer; idx: number }) {
               </div>
               {/* Body */}
               <div className="px-4 py-3.5" style={{ background: 'rgba(99,102,241,0.05)' }}>
-                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
                   {explanationText}
                 </p>
               </div>
@@ -229,7 +255,7 @@ function ResultsContent({ params }: { params: Promise<{ testId: string }> }) {
     <div className="max-w-4xl mx-auto flex flex-col items-center justify-center py-24 gap-4">
       <div className="w-12 h-12 border-4 rounded-full animate-spin"
         style={{ borderColor: 'rgba(99,102,241,0.15)', borderTopColor: '#6366f1' }} />
-      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Generating AI explanations…</p>
+      <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Loading your results…</p>
     </div>
   )
 
@@ -362,7 +388,7 @@ function ResultsContent({ params }: { params: Promise<{ testId: string }> }) {
       {/* ── Hint: click to expand ── */}
       {filtered.length > 0 && (
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          💡 Click any question to expand options and view the AI explanation
+          💡 Click any question to expand options, see the correct answer, and read the explanation
         </p>
       )}
 

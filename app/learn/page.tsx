@@ -2,49 +2,68 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { BookOpen, ChevronRight, CheckCircle, TrendingUp, Clock, Zap } from 'lucide-react'
 import { AddSubjectForm } from '@/components/learn/AddSubjectForm'
+import { GATE_SUBJECTS } from '@/lib/utils'
 
 export const metadata = { title: 'Learning Hub — GateFlow Pro' }
 
-const SUBJECT_META: Record<string, { icon: string; color: string; gradient: string; desc: string; topics: string[] }> = {
-  'Computer Science': {
-    icon: '💻', color: '#6366f1', gradient: 'from-indigo-500/20 to-violet-500/10',
-    desc: 'Core CS concepts tested in GATE CS',
-    topics: ['Operating Systems', 'DBMS', 'Data Structures & Algorithms', 'Computer Networks', 'Theory of Computation', 'Compiler Design', 'Computer Organization'],
+// ─────────────────────────────────────────────────────────────
+// GATE CSE Official Syllabus metadata (2024-25)
+// ─────────────────────────────────────────────────────────────
+const SUBJECT_META: Record<string, { icon: string; color: string; desc: string; marks: string }> = {
+  'Engineering Mathematics': {
+    icon: '∑', color: '#ec4899',
+    desc: 'Discrete Math, Linear Algebra, Calculus, Probability & Statistics',
+    marks: '~15%',
   },
-  'Operating Systems': {
-    icon: '🖥️', color: '#6366f1', gradient: 'from-indigo-500/20 to-blue-500/10',
-    desc: 'Processes, scheduling, memory management, deadlock, file systems',
-    topics: ['Process Management', 'CPU Scheduling', 'Deadlock', 'Memory Management', 'File Systems'],
+  'Digital Logic': {
+    icon: '⚡', color: '#f59e0b',
+    desc: 'Boolean algebra, combinational & sequential circuits, number systems',
+    marks: '~4%',
   },
-  'DBMS': {
-    icon: '🗄️', color: '#8b5cf6', gradient: 'from-violet-500/20 to-purple-500/10',
-    desc: 'Normalization, transactions, indexing, SQL, query optimization',
-    topics: ['Relational Model', 'Normalization', 'SQL', 'Transactions', 'Indexing'],
+  'Computer Organization & Architecture': {
+    icon: '🖥️', color: '#6366f1',
+    desc: 'Pipelining, cache, memory hierarchy, I/O, ALU & control unit design',
+    marks: '~5%',
   },
-  'Data Structures & Algorithms': {
-    icon: '🌲', color: '#10b981', gradient: 'from-emerald-500/20 to-teal-500/10',
-    desc: 'Trees, graphs, sorting, dynamic programming, complexity analysis',
-    topics: ['Arrays & Strings', 'Trees & Graphs', 'Sorting & Searching', 'Dynamic Programming', 'Hashing'],
+  'Programming & Data Structures': {
+    icon: '🌲', color: '#10b981',
+    desc: 'C programming, recursion, arrays, stacks, queues, trees, graphs',
+    marks: '~12%',
   },
-  'Computer Networks': {
-    icon: '🌐', color: '#3b82f6', gradient: 'from-blue-500/20 to-cyan-500/10',
-    desc: 'OSI model, TCP/IP stack, routing, MAC protocols, application layer',
-    topics: ['OSI & TCP/IP', 'Data Link Layer', 'Network Layer', 'Transport Layer', 'Application Layer'],
+  'Algorithms': {
+    icon: '⚙️', color: '#14b8a6',
+    desc: 'Complexity, sorting, greedy, DP, graph algorithms, NP-completeness',
+    marks: '~10%',
   },
   'Theory of Computation': {
-    icon: '⚙️', color: '#f59e0b', gradient: 'from-amber-500/20 to-orange-500/10',
-    desc: 'Automata, formal grammars, Turing machines, complexity classes',
-    topics: ['Regular Languages', 'Context-Free Languages', 'Turing Machines', 'Complexity Theory'],
+    icon: '🔁', color: '#8b5cf6',
+    desc: 'Automata, regular/CFL, pushdown automata, Turing machines, decidability',
+    marks: '~8%',
   },
-  'Mathematics': {
-    icon: '∑', color: '#ec4899', gradient: 'from-pink-500/20 to-rose-500/10',
-    desc: 'Linear algebra, calculus, probability, combinatorics, discrete math',
-    topics: ['Linear Algebra', 'Calculus', 'Probability', 'Combinatorics', 'Discrete Math'],
+  'Compiler Design': {
+    icon: '🔧', color: '#f97316',
+    desc: 'Lexical analysis, parsing, syntax-directed translation, code generation',
+    marks: '~6%',
+  },
+  'Operating Systems': {
+    icon: '💿', color: '#3b82f6',
+    desc: 'Processes, scheduling, deadlock, memory management, virtual memory, file systems',
+    marks: '~10%',
+  },
+  'Databases': {
+    icon: '🗄️', color: '#a855f7',
+    desc: 'ER model, relational algebra, SQL, normalization, indexing, transactions',
+    marks: '~10%',
+  },
+  'Computer Networks': {
+    icon: '🌐', color: '#06b6d4',
+    desc: 'OSI/TCP-IP, MAC, routing, TCP/UDP, congestion control, application layer',
+    marks: '~8%',
   },
   'General Aptitude': {
-    icon: '🧩', color: '#14b8a6', gradient: 'from-teal-500/20 to-cyan-500/10',
-    desc: 'Verbal reasoning, numerical aptitude, analytical puzzles',
-    topics: ['Verbal Ability', 'Numerical Aptitude', 'Logical Reasoning', 'Data Interpretation'],
+    icon: '🧩', color: '#84cc16',
+    desc: 'Verbal ability, quantitative aptitude, logical & analytical reasoning',
+    marks: '15 marks',
   },
 }
 
@@ -76,11 +95,15 @@ export default async function LearnPage() {
     return acc
   }, {})
 
-  const subjects = Object.keys(bySubject)
+  const subjects = [
+    ...GATE_SUBJECTS,
+    ...Object.keys(bySubject).filter(s => !GATE_SUBJECTS.includes(s as any)),
+  ]
+
   const totalTopics = topics?.length ?? 0
   const completedTopics = progress?.filter(p => p.completed).length ?? 0
   const overallPct = totalTopics > 0 ? Math.round((completedTopics / totalTopics) * 100) : 0
-  const studyStreak = 7 // placeholder — would be real data
+  const studyStreak = 7
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -94,11 +117,11 @@ export default async function LearnPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-3"
                 style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', border: '1px solid rgba(99,102,241,0.25)' }}>
-                <Zap className="w-3 h-3" /> AI-Powered Learning
+                <Zap className="w-3 h-3" /> GATE CSE 2024-25 Syllabus
               </div>
               <h1 className="text-3xl font-black mb-2" style={{ color: 'var(--text-primary)' }}>Learning Hub</h1>
               <p className="text-sm max-w-lg" style={{ color: 'var(--text-secondary)' }}>
-                Structured GATE curriculum with AI-generated explanations, curated notes, and instant practice quizzes.
+                Structured curriculum aligned to the official GATE CSE syllabus — 2 sections, 11 subjects.
                 Study smarter — not harder.
               </p>
             </div>
@@ -135,6 +158,29 @@ export default async function LearnPage() {
         </div>
       </div>
 
+      {/* ── GATE Syllabus Quick Reference ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        {[
+          { label: 'Engineering Mathematics', marks: '~15%', color: '#ec4899' },
+          { label: 'Digital Logic', marks: '~4%', color: '#f59e0b' },
+          { label: 'COA', marks: '~5%', color: '#6366f1' },
+          { label: 'Prog & DS', marks: '~12%', color: '#10b981' },
+          { label: 'Algorithms', marks: '~10%', color: '#14b8a6' },
+          { label: 'TOC', marks: '~8%', color: '#8b5cf6' },
+          { label: 'Compiler Design', marks: '~6%', color: '#f97316' },
+          { label: 'OS', marks: '~10%', color: '#3b82f6' },
+          { label: 'DBMS', marks: '~10%', color: '#a855f7' },
+          { label: 'Networks', marks: '~8%', color: '#06b6d4' },
+          { label: 'General Aptitude', marks: '15 marks', color: '#84cc16' },
+        ].map(({ label, marks, color }) => (
+          <div key={label} className="rounded-xl border px-3 py-2 flex items-center justify-between gap-2"
+            style={{ background: `${color}08`, borderColor: `${color}20` }}>
+            <span className="text-xs font-medium truncate" style={{ color: 'var(--text-secondary)' }}>{label}</span>
+            <span className="text-xs font-bold shrink-0" style={{ color }}>{marks}</span>
+          </div>
+        ))}
+      </div>
+
       {/* ── Study Path Info ── */}
       <div className="grid md:grid-cols-3 gap-4">
         {DIFFICULTY_LEVELS.map((d) => (
@@ -165,8 +211,8 @@ export default async function LearnPage() {
           <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
             {subjects.map((subject) => {
               const meta = SUBJECT_META[subject] ?? {
-                icon: '📚', color: '#6366f1', gradient: 'from-indigo-500/20 to-violet-500/10',
-                desc: 'GATE preparation topics', topics: [],
+                icon: '📚', color: '#6366f1',
+                desc: 'GATE preparation topics', marks: '',
               }
               const subjectTopics = bySubject[subject] ?? []
               const completed = subjectTopics.filter(t => progressMap.get(t!.id)).length
@@ -180,7 +226,7 @@ export default async function LearnPage() {
                   className="card p-6 group cursor-pointer block relative overflow-hidden"
                   style={isComplete ? { borderColor: 'rgba(16,185,129,0.3)' } : {}}>
 
-                  {/* Background gradient */}
+                  {/* Hover gradient */}
                   <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
                     style={{ background: `linear-gradient(135deg, ${meta.color}08 0%, transparent 60%)` }} />
 
@@ -191,18 +237,17 @@ export default async function LearnPage() {
                         style={{ background: `${meta.color}15`, border: `1px solid ${meta.color}25` }}>
                         {meta.icon}
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-col items-end gap-1">
                         {isComplete && <CheckCircle className="w-4 h-4 text-emerald-400" />}
-                        <span className="text-sm font-bold"
-                          style={{ color: isComplete ? '#10b981' : pct > 0 ? meta.color : 'var(--text-muted)' }}>
-                          {pct}%
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                          style={{ background: `${meta.color}15`, color: meta.color }}>
+                          {meta.marks}
                         </span>
                       </div>
                     </div>
 
                     {/* Title & desc */}
-                    <h3 className="font-bold text-base mb-1 transition-colors"
-                      style={{ color: 'var(--text-primary)' }}>
+                    <h3 className="font-bold text-base mb-1 transition-colors" style={{ color: 'var(--text-primary)' }}>
                       {subject}
                     </h3>
                     <p className="text-xs mb-4 leading-relaxed line-clamp-2" style={{ color: 'var(--text-secondary)' }}>
@@ -226,6 +271,12 @@ export default async function LearnPage() {
                         <span className="text-xs px-2 py-0.5 rounded-full"
                           style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.06)' }}>
                           +{subjectTopics.length - 3} more
+                        </span>
+                      )}
+                      {subjectTopics.length === 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full"
+                          style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                          No content yet
                         </span>
                       )}
                     </div>
@@ -288,7 +339,7 @@ export default async function LearnPage() {
             { step: '01', title: 'Pick a Topic', desc: 'Browse subjects → topics → subtopics at your pace', icon: '🎯' },
             { step: '02', title: 'Study Material', desc: 'Read curated notes & watch GATE-focused videos', icon: '📖' },
             { step: '03', title: 'AI Summary', desc: 'Generate easy explanations & key revision points', icon: '🧠' },
-            { step: '04', title: 'Practice Quiz', desc: 'AI generates GATE-style MCQs from your notes', icon: '🧪' },
+            { step: '04', title: 'Practice Quiz', desc: 'Take mock tests from your uploaded question bank', icon: '🧪' },
           ].map((item) => (
             <div key={item.step} className="flex gap-3">
               <div className="text-3xl shrink-0">{item.icon}</div>

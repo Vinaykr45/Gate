@@ -20,8 +20,10 @@ export async function POST(request: NextRequest) {
     // Build question query
     let query = supabase.from('questions').select('*')
 
-    if (type === 'topic' && topic) {
-      query = query.ilike('topic', `%${topic}%`)
+    if (type === 'topic') {
+      // Filter by subject first, then topic (exact match from DB values)
+      if (subject) query = query.eq('subject', subject)
+      if (topic) query = query.eq('topic', topic)
     } else if (type === 'subject' && subject) {
       query = query.eq('subject', subject)
     }

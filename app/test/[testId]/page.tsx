@@ -59,9 +59,26 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
 
   const currentQuestion = questions[currentIdx]?.question
 
+  const isMSQ = currentQuestion?.options?._type === 'MSQ'
+  const isNAT = currentQuestion?.options?._type === 'NAT'
+
   const selectOption = (option: string) => {
     if (!currentQuestion) return
-    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: { ...prev[currentQuestion.id], selected_option: option } }))
+    setAnswers((prev) => {
+      const currentAns = prev[currentQuestion.id]
+      let newSelected = option
+
+      if (isMSQ) {
+        const currentSelectedArr = currentAns?.selected_option ? currentAns.selected_option.split(',') : []
+        if (currentSelectedArr.includes(option)) {
+          newSelected = currentSelectedArr.filter(o => o !== option).join(',')
+        } else {
+          newSelected = [...currentSelectedArr, option].sort().join(',')
+        }
+      }
+
+      return { ...prev, [currentQuestion.id]: { ...currentAns, selected_option: newSelected } }
+    })
   }
 
   const toggleReview = () => {
@@ -185,7 +202,7 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
 
         {/* ── Main Question Area ── */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-5">
+          <div className="max-w-3xl mx-auto p-3 sm:p-4 space-y-5">
 
             {/* Question Meta */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -220,34 +237,55 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
             </div>
 
             {/* Options */}
-            <div className="space-y-2.5">
-              {Object.entries(currentQuestion.options).map(([key, text]) => {
-                const isSelected = currentAnswer?.selected_option === key
-                return (
-                  <button
-                    key={key}
-                    onClick={() => selectOption(key)}
-                    className="w-full text-left flex items-start gap-3 p-4 rounded-xl border transition-all duration-150 hover:scale-[1.005]"
-                    style={isSelected ? {
-                      background: 'rgba(99,102,241,0.1)',
-                      borderColor: '#6366f1',
-                      boxShadow: '0 0 0 1px rgba(99,102,241,0.3)',
-                    } : {
-                      background: 'var(--bg-card)',
-                      borderColor: 'var(--border-subtle)',
-                    }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0"
+            {isNAT ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-indigo-400">Numerical Answer Type (NAT)</p>
+                <input 
+                  type="text" 
+                  placeholder="Enter your numerical answer..." 
+                  value={currentAnswer?.selected_option || ''}
+                  onChange={(e) => selectOption(e.target.value)}
+                  className="w-full p-4 rounded-xl border transition-all duration-150 focus:outline-none focus:ring-1"
+                  style={{
+                    background: 'var(--bg-card)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {isMSQ && <p className="text-sm font-semibold text-indigo-400 mb-2">Multiple Select Question (MSQ) - Select one or more</p>}
+                {Object.entries(currentQuestion.options).filter(([key]) => key !== '_type').map(([key, text]) => {
+                  const isSelected = isMSQ 
+                    ? (currentAnswer?.selected_option || '').split(',').includes(key)
+                    : currentAnswer?.selected_option === key
+                  
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => selectOption(key)}
+                      className="w-full text-left flex items-start gap-3 p-4 rounded-xl border transition-all duration-150 hover:scale-[1.005]"
                       style={isSelected ? {
-                        background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                        color: 'white',
+                        background: 'rgba(99,102,241,0.1)',
+                        borderColor: '#6366f1',
+                        boxShadow: '0 0 0 1px rgba(99,102,241,0.3)',
                       } : {
-                        background: 'var(--bg-secondary)',
-                        color: 'var(--text-muted)',
-                        border: '1px solid var(--border-subtle)',
+                        background: 'var(--bg-card)',
+                        borderColor: 'var(--border-subtle)',
                       }}
                     >
+                      <div
+                        className={`w-8 h-8 flex items-center justify-center text-sm font-black shrink-0 ${isMSQ ? 'rounded-md' : 'rounded-full'}`}
+                        style={isSelected ? {
+                          background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                          color: 'white',
+                        } : {
+                          background: 'var(--bg-secondary)',
+                          color: 'var(--text-muted)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
                       {key}
                     </div>
                     <span className="text-sm leading-relaxed pt-1"
@@ -258,6 +296,7 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
                 )
               })}
             </div>
+            )}
 
             {/* Actions Row */}
             <div className="flex items-center justify-between gap-3 pt-1">

@@ -39,36 +39,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Test not found' }, { status: 404 })
     }
 
-    // Fetch correct answers for all questions in the test
+    // Fetch correct answers and options for all questions in the test
     const questionIds = answers.map((a) => a.question_id)
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
-      .select('id, correct_answer')
+      .select('id, correct_answer, options')
       .in('id', questionIds)
 
     if (questionsError) {
       return NextResponse.json({ error: 'Failed to fetch questions' }, { status: 500 })
     }
 
-    const correctAnswerMap = new Map(questions?.map((q) => [q.id, q.correct_answer]) || [])
+    const questionMap = new Map(questions?.map((q) => [q.id, q]) || [])
 
     // Calculate scores
+    let score = 0
     let correct = 0
     let incorrect = 0
     let unattempted = 0
 
     const processedAnswers = answers.map((answer) => {
-      const correctAnswer = correctAnswerMap.get(answer.question_id)
-      const isCorrect = correctAnswer && correctAnswer !== 'unknown'
-        ? answer.selected_option === correctAnswer
-        : false
+      const q = questionMap.get(answer.question_id)
+      const correctAnswer = q?.correct_answer
+      const qOptions = q?.options as any
+      const isMSQ = qOptions?._type === 'MSQ'
+      const isNAT = qOptions?._type === 'NAT'
+
+      let isCorrect = false
+
+      if (answer.selected_option && correctAnswer && correctAnswer !== 'unknown') {
+        if (isNAT) {
+          // Check if NAT is a range e.g. "2.4-2.6" or "-1.5--1.0"
+          // We can just use a simple regex or check if it's a direct match
+          if (answer.selected_option === correctAnswer) {
+            isCorrect = true
+          } else {
+            const parts = correctAnswer.split(/(?<!^)-/) // Split by '-' but not if it's the first char
+            if (parts.length === 2) {
+              const min = parseFloat(parts[0])
+              const max = parseFloat(parts[1])
+              const val = parseFloat(answer.selected_option)
+              if (!isNaN(val) && val >= min && val <= max) {
+                isCorrect = true
+              }
+            }
+          }
+        } else {
+          // MCQ or MSQ
+          isCorrect = answer.selected_option === correctAnswer
+        }
+      }
 
       if (!answer.selected_option) {
         unattempted++
       } else if (isCorrect) {
         correct++
+        score += 1 // +1 for correct
       } else {
         incorrect++
+        if (!isMSQ && !isNAT) {
+          score -= 0.33 // -0.33 for incorrect MCQ. NAT and MSQ have NO negative marking in GATE
+        }
       }
 
       return {
@@ -80,8 +111,6 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // GATE marking scheme: +1 for correct, -0.33 for incorrect (1-mark questions)
-    const score = correct - (incorrect * 0.33)
     const totalMarks = answers.length
     const accuracy = answers.length > 0
       ? (correct / answers.filter((a) => a.selected_option).length) * 100 || 0
