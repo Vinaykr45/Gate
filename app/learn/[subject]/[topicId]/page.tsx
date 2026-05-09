@@ -7,6 +7,8 @@ import {
   ChevronLeft, Play, BookOpen, Brain, CheckCircle2,
   Bookmark, Plus, Trash2, ExternalLink, Loader2, Sparkles, FlaskConical, Globe,
 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { LearningTopic, Video, Note, UserNote, AISummary, LearningProgress } from '@/lib/types'
 import { AddVideoForm } from '@/components/learn/AddVideoForm'
 import { AddCuratedNoteForm } from '@/components/learn/AddCuratedNoteForm'
@@ -48,6 +50,7 @@ export default function TopicDetailPage({ params }: Props) {
   const [fetchingMaterial, setFetchingMaterial] = useState(false)
   const [fetchedMaterial, setFetchedMaterial] = useState<FetchedMaterial | null>(null)
   const [materialError, setMaterialError] = useState('')
+  const [customTopic, setCustomTopic] = useState('')
 
   useEffect(() => {
     params.then(setResolvedParams)
@@ -174,7 +177,7 @@ export default function TopicDetailPage({ params }: Props) {
       const res = await fetch('/api/learning/fetch-material', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic_id: topic.id, mode }),
+        body: JSON.stringify({ topic_id: topic.id, mode, custom_topic: customTopic.trim() || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch material')
@@ -417,9 +420,9 @@ export default function TopicDetailPage({ params }: Props) {
                     </button>
                   </div>
                   {note.content && (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-                      {note.content}
-                    </p>
+                    <div className="prose prose-sm prose-invert max-w-none" style={{ color: 'var(--text-secondary)' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
+                    </div>
                   )}
                   {note.link && (
                     <a href={note.link} target="_blank" rel="noopener noreferrer"
@@ -452,9 +455,9 @@ export default function TopicDetailPage({ params }: Props) {
             </div>
             {userNotes.map(note => (
               <div key={note.id} className="card p-4 flex items-start gap-3">
-                <p className="flex-1 text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text-secondary)' }}>
-                  {note.content}
-                </p>
+                <div className="flex-1 prose prose-sm prose-invert max-w-none" style={{ color: 'var(--text-secondary)' }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
+                </div>
                 <button onClick={() => deleteUserNote(note.id)} className="shrink-0 p-1.5 rounded-lg transition-colors hover:text-red-400"
                   style={{ color: 'var(--text-muted)' }}>
                   <Trash2 className="w-4 h-4" />
@@ -630,37 +633,37 @@ export default function TopicDetailPage({ params }: Props) {
       {/* Tab: Learn Material (AI + Internet) */}
       {activeTab === 'material' && (
         <div className="space-y-5 animate-fade-in">
-          {/* Controls */}
-          <div className="card p-5" style={{ background: 'rgba(59,130,246,0.04)', borderColor: 'rgba(59,130,246,0.15)' }}>
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h3 className="font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                  <Globe className="w-4 h-4" style={{ color: '#60a5fa' }} /> AI Learning Material
-                </h3>
-                <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                  Gemini generates comprehensive GATE-focused content for {topic.subtopic}
-                </p>
+          {/* Controls (Only show if material is fetched, as a compact regenerate bar) */}
+          {fetchedMaterial && !fetchingMaterial && (
+            <div className="card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" style={{ background: 'rgba(59,130,246,0.02)', borderColor: 'rgba(59,130,246,0.1)' }}>
+              <div className="flex-1 w-full sm:w-auto">
+                <input 
+                  type="text" 
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  placeholder="Custom Topic (e.g. Memory Management)"
+                  className="input text-sm w-full py-2.5"
+                />
               </div>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button onClick={() => fetchMaterial('ai')} disabled={fetchingMaterial}
-                  className="btn-secondary text-sm px-4 py-2 flex items-center gap-2">
-                  {fetchingMaterial ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  Generate
+                  className="btn-secondary text-sm px-4 py-2.5 flex-1 sm:flex-none flex items-center justify-center gap-2">
+                  <Sparkles className="w-4 h-4" /> Regenerate
                 </button>
                 <button onClick={() => fetchMaterial('comprehensive')} disabled={fetchingMaterial}
-                  className="btn-primary text-sm px-4 py-2 flex items-center gap-2"
+                  className="btn-primary text-sm px-4 py-2.5 flex-1 sm:flex-none flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)' }}>
-                  {fetchingMaterial ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
-                  Generate &amp; Save as Notes
+                  <Globe className="w-4 h-4" /> Save as Notes
                 </button>
               </div>
             </div>
-            {materialError && (
-              <div className="mt-3 rounded-xl p-3 text-xs" style={{ background: 'rgba(239,68,68,0.08)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.2)' }}>
-                ⚠️ {materialError}
-              </div>
-            )}
-          </div>
+          )}
+
+          {materialError && (
+            <div className="rounded-xl p-3 text-xs" style={{ background: 'rgba(239,68,68,0.08)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.2)' }}>
+              ⚠️ {materialError}
+            </div>
+          )}
 
           {fetchingMaterial && (
             <div className="card p-12 text-center">
@@ -770,18 +773,39 @@ export default function TopicDetailPage({ params }: Props) {
           )}
 
           {!fetchedMaterial && !fetchingMaterial && (
-            <div className="card p-12 text-center">
-              <Globe className="w-12 h-12 mx-auto mb-4 opacity-30" style={{ color: '#60a5fa' }} />
-              <h3 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>AI Learning Material</h3>
-              <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>Generate comprehensive study material including explanations, GATE patterns, worked examples, mnemonics, and resources.</p>
-              <div className="flex gap-3 justify-center flex-wrap">
-                <button onClick={() => fetchMaterial('ai')} className="btn-secondary px-5 py-2.5 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" /> Generate Material
-                </button>
-                <button onClick={() => fetchMaterial('comprehensive')} className="btn-primary px-5 py-2.5 flex items-center gap-2"
-                  style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)' }}>
-                  <Globe className="w-4 h-4" /> Generate &amp; Auto-Save Notes
-                </button>
+            <div className="card overflow-hidden">
+              <div className="p-10 text-center relative" style={{ background: 'linear-gradient(180deg, rgba(59,130,246,0.03) 0%, transparent 100%)' }}>
+                <div className="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.1), rgba(99,102,241,0.1))', border: '1px solid rgba(99,102,241,0.2)' }}>
+                  <Globe className="w-8 h-8" style={{ color: '#60a5fa' }} />
+                </div>
+                <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>AI Learning Material</h3>
+                <p className="text-sm mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                  Generate comprehensive study material for <strong>{topic.subtopic}</strong> including explanations, GATE patterns, worked examples, mnemonics, and resources.
+                </p>
+
+                <div className="max-w-md mx-auto p-5 rounded-2xl border mb-8 text-left" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
+                  <label className="block text-sm font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+                    Customize Topic (Optional)
+                  </label>
+                  <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>Want to focus on a specific algorithm or sub-area? Enter it below.</p>
+                  <input 
+                    type="text" 
+                    value={customTopic}
+                    onChange={(e) => setCustomTopic(e.target.value)}
+                    placeholder={`E.g. specifically for ${topic.subtopic}...`}
+                    className="input text-sm w-full"
+                  />
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                  <button onClick={() => fetchMaterial('ai')} className="btn-secondary w-full sm:w-auto px-6 py-3 flex items-center justify-center gap-2">
+                    <Sparkles className="w-4 h-4" /> Generate Material
+                  </button>
+                  <button onClick={() => fetchMaterial('comprehensive')} className="btn-primary w-full sm:w-auto px-6 py-3 flex items-center justify-center gap-2"
+                    style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)' }}>
+                    <Globe className="w-4 h-4" /> Generate & Save to Notes
+                  </button>
+                </div>
               </div>
             </div>
           )}

@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { topic_id, mode = 'ai' } = await request.json()
+    const { topic_id, mode = 'ai', custom_topic } = await request.json()
     if (!topic_id) return NextResponse.json({ error: 'topic_id is required' }, { status: 400 })
 
     // Fetch topic metadata
@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Topic not found' }, { status: 404 })
     }
 
-    const fullTopic = `${topic.topic} — ${topic.subtopic}`
+    const fullTopic = custom_topic ? `${topic.topic} — ${custom_topic}` : `${topic.topic} — ${topic.subtopic}`
 
     const prompt = `You are a GATE CS expert. Generate a concise learning guide for:
 - Subject: ${topic.subject}
 - Topic: ${topic.topic}
-- Subtopic: ${topic.subtopic}
+- Subtopic: ${custom_topic || topic.subtopic}
 
 IMPORTANT: Keep EVERY string value under 150 characters. Be brief and exam-focused.
 Return ONLY a valid JSON object matching this exact schema (no markdown, no extra text):
@@ -113,7 +113,7 @@ Return ONLY a valid JSON object matching this exact schema (no markdown, no extr
         const notesToInsert = [
           {
             topic_id,
-            title: `${topic.subtopic} — Core Concepts`,
+            title: `${custom_topic || topic.subtopic} — Core Concepts`,
             content: material.concept_explanation + '\n\n📌 Key Points:\n' + material.key_points.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n'),
             type: 'text',
             order_num: 1,
