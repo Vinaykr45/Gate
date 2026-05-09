@@ -51,16 +51,16 @@ INSERT INTO learning_topics (subject, topic, subtopic, description, order_num) V
 -- ─────────────────────────────────────────────
 -- 3. COMPUTER ORGANIZATION & ARCHITECTURE
 -- ─────────────────────────────────────────────
-('Computer Organization & Architecture', 'Machine Instructions', 'Instruction Set Architecture', 'RISC vs CISC, addressing modes, instruction formats', 10),
-('Computer Organization & Architecture', 'Machine Instructions', 'ALU Design', 'Arithmetic operations, logic operations, status flags', 20),
-('Computer Organization & Architecture', 'Data Path and Control', 'Hardwired vs Microprogrammed Control', 'Control unit design, microoperations, microprogramming', 30),
-('Computer Organization & Architecture', 'Data Path and Control', 'Pipelining', 'Pipeline stages, hazards (structural, data, control), stalling, forwarding', 40),
-('Computer Organization & Architecture', 'Data Path and Control', 'Pipeline Performance', 'Speedup, efficiency, throughput, branch prediction', 50),
-('Computer Organization & Architecture', 'Memory Organization', 'Cache Memory', 'Cache mapping (direct, set-associative, fully associative), replacement policies, write policies', 60),
-('Computer Organization & Architecture', 'Memory Organization', 'Main Memory', 'DRAM, SRAM, memory interleaving, memory hierarchy', 70),
-('Computer Organization & Architecture', 'Memory Organization', 'Virtual Memory', 'Paging, segmentation, page tables, TLB, page faults', 80),
-('Computer Organization & Architecture', 'I/O Organization', 'I/O Interfaces', 'Programmed I/O, interrupt driven I/O, DMA', 90),
-('Computer Organization & Architecture', 'I/O Organization', 'Secondary Storage', 'Disk structure, seek time, rotational latency, disk scheduling', 100),
+('Computer Organization and Architecture', 'Machine Instructions', 'Instruction Set Architecture', 'RISC vs CISC, addressing modes, instruction formats', 10),
+('Computer Organization and Architecture', 'Machine Instructions', 'ALU Design', 'Arithmetic operations, logic operations, status flags', 20),
+('Computer Organization and Architecture', 'Data Path and Control', 'Hardwired vs Microprogrammed Control', 'Control unit design, microoperations, microprogramming', 30),
+('Computer Organization and Architecture', 'Data Path and Control', 'Pipelining', 'Pipeline stages, hazards (structural, data, control), stalling, forwarding', 40),
+('Computer Organization and Architecture', 'Data Path and Control', 'Pipeline Performance', 'Speedup, efficiency, throughput, branch prediction', 50),
+('Computer Organization and Architecture', 'Memory Organization', 'Cache Memory', 'Cache mapping (direct, set-associative, fully associative), replacement policies, write policies', 60),
+('Computer Organization and Architecture', 'Memory Organization', 'Main Memory', 'DRAM, SRAM, memory interleaving, memory hierarchy', 70),
+('Computer Organization and Architecture', 'Memory Organization', 'Virtual Memory', 'Paging, segmentation, page tables, TLB, page faults', 80),
+('Computer Organization and Architecture', 'I/O Organization', 'I/O Interfaces', 'Programmed I/O, interrupt driven I/O, DMA', 90),
+('Computer Organization and Architecture', 'I/O Organization', 'Secondary Storage', 'Disk structure, seek time, rotational latency, disk scheduling', 100),
 
 -- ─────────────────────────────────────────────
 -- 4. PROGRAMMING AND DATA STRUCTURES
@@ -128,21 +128,21 @@ INSERT INTO learning_topics (subject, topic, subtopic, description, order_num) V
 -- ─────────────────────────────────────────────
 -- 8. OPERATING SYSTEMS
 -- ─────────────────────────────────────────────
-('Operating Systems', 'Process Management', 'Process and Thread Concepts', 'Process vs thread, PCB, process states, context switching', 10),
-('Operating Systems', 'Process Management', 'Inter-Process Communication', 'Shared memory, message passing, pipes, signals', 20),
-('Operating Systems', 'Process Management', 'Synchronization', 'Critical section, mutex, semaphores, monitors, condition variables', 30),
-('Operating Systems', 'Process Management', 'Classical Synchronization Problems', 'Producer-consumer, readers-writers, dining philosophers', 40),
-('Operating Systems', 'CPU Scheduling', 'Scheduling Algorithms', 'FCFS, SJF, SRTF, Round Robin, Priority scheduling, multilevel queues', 50),
-('Operating Systems', 'CPU Scheduling', 'Scheduling Metrics', 'CPU utilization, throughput, turnaround time, waiting time, response time', 60),
-('Operating Systems', 'Deadlock', 'Deadlock Concepts', 'Necessary conditions, resource allocation graph, deadlock detection', 70),
-('Operating Systems', 'Deadlock', 'Deadlock Handling', 'Prevention, avoidance (Banker algorithm), detection, recovery', 80),
-('Operating Systems', 'Memory Management', 'Contiguous Memory Allocation', 'Fixed/variable partitioning, fragmentation, compaction, swapping', 90),
-('Operating Systems', 'Memory Management', 'Paging', 'Page tables, multi-level paging, inverted page table, TLB, effective access time', 100),
-('Operating Systems', 'Memory Management', 'Segmentation', 'Segment tables, segmentation with paging', 110),
-('Operating Systems', 'Memory Management', 'Virtual Memory', 'Demand paging, page replacement algorithms (FIFO, LRU, Optimal, Clock)', 120),
-('Operating Systems', 'File Systems', 'File System Concepts', 'File attributes, operations, access methods, directory structure', 130),
-('Operating Systems', 'File Systems', 'File System Implementation', 'Allocation methods (contiguous, linked, indexed), i-nodes, free space management', 140),
-('Operating Systems', 'File Systems', 'Disk Scheduling', 'FCFS, SSTF, SCAN, C-SCAN, LOOK disk scheduling algorithms', 150),
+('Operating System', 'Process Management', 'Process and Thread Concepts', 'Process vs thread, PCB, process states, context switching', 10),
+('Operating System', 'Process Management', 'Inter-Process Communication', 'Shared memory, message passing, pipes, signals', 20),
+('Operating System', 'Process Management', 'Synchronization', 'Critical section, mutex, semaphores, monitors, condition variables', 30),
+('Operating System', 'Process Management', 'Classical Synchronization Problems', 'Producer-consumer, readers-writers, dining philosophers', 40),
+('Operating System', 'CPU Scheduling', 'Scheduling Algorithms', 'FCFS, SJF, SRTF, Round Robin, Priority scheduling, multilevel queues', 50),
+('Operating System', 'CPU Scheduling', 'Scheduling Metrics', 'CPU utilization, throughput, turnaround time, waiting time, response time', 60),
+('Operating System', 'Deadlock', 'Deadlock Concepts', 'Necessary conditions, resource allocation graph, deadlock detection', 70),
+('Operating System', 'Deadlock', 'Deadlock Handling', 'Prevention, avoidance (Banker algorithm), detection, recovery', 80),
+('Operating System', 'Memory Management', 'Contiguous Memory Allocation', 'Fixed/variable partitioning, fragmentation, compaction, swapping', 90),
+('Operating System', 'Memory Management', 'Paging', 'Page tables, multi-level paging, inverted page table, TLB, effective access time', 100),
+('Operating System', 'Memory Management', 'Segmentation', 'Segment tables, segmentation with paging', 110),
+('Operating System', 'Memory Management', 'Virtual Memory', 'Demand paging, page replacement algorithms (FIFO, LRU, Optimal, Clock)', 120),
+('Operating System', 'File Systems', 'File System Concepts', 'File attributes, operations, access methods, directory structure', 130),
+('Operating System', 'File Systems', 'File System Implementation', 'Allocation methods (contiguous, linked, indexed), i-nodes, free space management', 140),
+('Operating System', 'File Systems', 'Disk Scheduling', 'FCFS, SSTF, SCAN, C-SCAN, LOOK disk scheduling algorithms', 150),
 
 -- ─────────────────────────────────────────────
 -- 9. DATABASES
@@ -184,3 +184,33 @@ INSERT INTO learning_topics (subject, topic, subtopic, description, order_num) V
 ('Computer Networks', 'Application Layer', 'HTTP and HTTPS', 'HTTP/1.1 vs HTTP/2, methods, status codes, cookies, TLS', 170),
 ('Computer Networks', 'Application Layer', 'Email Protocols', 'SMTP, POP3, IMAP — architecture and comparison', 180),
 ('Computer Networks', 'Application Layer', 'Other Protocols', 'FTP, DHCP, SNMP, NTP — purpose and key features', 190);
+
+-- ---------------------------------------------
+-- 11. GENERAL APTITUDE
+-- ---------------------------------------------
+('General Aptitude', 'Verbal Aptitude', 'Basic English grammar: tenses, articles, adjectives, prepositions, conjunctions, verb-noun agreement, and other parts of speech', 'Grammar basics for GATE', 200),
+('General Aptitude', 'Verbal Aptitude', 'Basic vocabulary: words, idioms, and phrases in context', 'Vocabulary basics for GATE', 201),
+('General Aptitude', 'Verbal Aptitude', 'Reading and comprehension', 'Reading comprehension', 202),
+('General Aptitude', 'Verbal Aptitude', 'Narrative sequencing', 'Narrative sequencing', 203),
+('General Aptitude', 'Quantitative Aptitude', 'Data interpretation: bar graphs, pie charts, other graphs, maps, and tables', 'Data interpretation', 204),
+('General Aptitude', 'Quantitative Aptitude', '2-dimensional and 3-dimensional plots', 'Plots and charts', 205),
+('General Aptitude', 'Quantitative Aptitude', 'Numerical computation and estimation', 'Numerical computation', 206),
+('General Aptitude', 'Quantitative Aptitude', 'Ratios', 'Ratios', 207),
+('General Aptitude', 'Quantitative Aptitude', 'Percentages', 'Percentages', 208),
+('General Aptitude', 'Quantitative Aptitude', 'Powers, exponents, and logarithms', 'Powers and logs', 209),
+('General Aptitude', 'Quantitative Aptitude', 'Permutations and combinations', 'Permutations and combinations', 210),
+('General Aptitude', 'Quantitative Aptitude', 'Series', 'Series', 211),
+('General Aptitude', 'Quantitative Aptitude', 'Mensuration and geometry', 'Geometry', 212),
+('General Aptitude', 'Quantitative Aptitude', 'Elementary statistics and probability', 'Statistics and probability', 213),
+('General Aptitude', 'Analytical Aptitude', 'Logic: deduction and induction', 'Logic basics', 214),
+('General Aptitude', 'Analytical Aptitude', 'Analogy', 'Analogy', 215),
+('General Aptitude', 'Analytical Aptitude', 'Numerical relations and reasoning', 'Numerical reasoning', 216),
+('General Aptitude', 'Spatial Aptitude', 'Transformation of shapes', 'Shapes transformation', 217),
+('General Aptitude', 'Spatial Aptitude', 'Translation', 'Translation', 218),
+('General Aptitude', 'Spatial Aptitude', 'Rotation', 'Rotation', 219),
+('General Aptitude', 'Spatial Aptitude', 'Scaling', 'Scaling', 220),
+('General Aptitude', 'Spatial Aptitude', 'Mirroring', 'Mirroring', 221),
+('General Aptitude', 'Spatial Aptitude', 'Assembling and grouping', 'Assembling shapes', 222),
+('General Aptitude', 'Spatial Aptitude', 'Paper folding and cutting', 'Paper folding', 223),
+('General Aptitude', 'Spatial Aptitude', 'Patterns in 2D and 3D', 'Patterns', 224);
+

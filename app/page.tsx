@@ -204,7 +204,7 @@ const SUBJECTS = [
   { name: 'Algorithms', icon: '🧮', color: '#3b82f6', count: 13, tags: ['DP', 'Greedy', 'Graph Algo'] },
   { name: 'Theory of Computation', icon: '⚙️', color: '#8b5cf6', count: 10, tags: ['Automata', 'CFG', 'Turing'] },
   { name: 'Compiler Design', icon: '🔧', color: '#14b8a6', count: 10, tags: ['Parsing', 'SDT', 'Optimization'] },
-  { name: 'Operating Systems', icon: '🖥️', color: '#6366f1', count: 15, tags: ['Scheduling', 'Memory', 'Deadlock'] },
+  { name: 'Operating System', icon: '🖥️', color: '#6366f1', count: 15, tags: ['Scheduling', 'Memory', 'Deadlock'] },
   { name: 'Databases', icon: '🗄️', color: '#a78bfa', count: 14, tags: ['SQL', 'Normalization', 'Transactions'] },
   { name: 'Computer Networks', icon: '🌐', color: '#38bdf8', count: 19, tags: ['TCP/IP', 'Routing', 'DNS'] },
 ]
@@ -224,3 +224,4 @@ const STEPS = [
   { title: 'AI Quiz', desc: 'Generate GATE-style practice questions from your study material on demand.' },
   { title: 'Track Progress', desc: 'Monitor accuracy, streaks, and weak areas via the analytics dashboard.' },
 ]
+

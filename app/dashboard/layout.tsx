@@ -123,7 +123,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           ))}
 
           {/* Quick Actions */}
-          <div>
+          {/* <div>
             <p className="text-xs font-semibold uppercase px-3 mb-2 tracking-widest"
               style={{ color: 'var(--text-muted)' }}>Quick Start</p>
             <div className="space-y-2 px-1">
@@ -140,7 +140,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 View Performance
               </Link>
             </div>
-          </div>
+          </div> */}
         </nav>
 
         {/* User footer */}

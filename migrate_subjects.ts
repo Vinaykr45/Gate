@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 
-dotenv.config({ path: '.env.local' })
+dotenv.config({ path: '.env' })
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,21 +20,25 @@ async function migrate() {
 
   let updated = 0
   for (const q of data) {
+    let newSubject = q.subject
     if (q.subject === 'Computer Science' || q.subject === 'Mathematics') {
-      // Just set them to "Programming & Data Structures" for CS and "Engineering Mathematics" for Math
-      // to make them show up correctly. Or maybe parse them based on topic?
-      let newSubject = 'Programming & Data Structures'
+      newSubject = 'Programming and Data Structures'
       if (q.subject === 'Mathematics') newSubject = 'Engineering Mathematics'
       
-      // Let's do a better mapping based on topic
       const lower = q.topic?.toLowerCase() || ''
-      if (lower.includes('schedul') || lower.includes('deadlock') || lower.includes('paging') || lower.includes('memory') || lower.includes('process')) newSubject = 'Operating Systems'
+      if (lower.includes('schedul') || lower.includes('deadlock') || lower.includes('paging') || lower.includes('memory') || lower.includes('process')) newSubject = 'Operating System'
       if (lower.includes('normaliz') || lower.includes('sql') || lower.includes('transaction') || lower.includes('b-tree')) newSubject = 'Databases'
       if (lower.includes('sort') || lower.includes('tree') || lower.includes('graph') || lower.includes('dp')) newSubject = 'Algorithms'
       if (lower.includes('osi') || lower.includes('tcp') || lower.includes('mac')) newSubject = 'Computer Networks'
       if (lower.includes('regular') || lower.includes('context') || lower.includes('turing')) newSubject = 'Theory of Computation'
       if (lower.includes('matrix') || lower.includes('calculus') || lower.includes('probability')) newSubject = 'Engineering Mathematics'
-      
+    }
+
+    if (newSubject === 'Operating Systems') newSubject = 'Operating System'
+    if (newSubject === 'Computer Organization & Architecture') newSubject = 'Computer Organization and Architecture'
+    if (newSubject === 'Programming & Data Structures') newSubject = 'Programming and Data Structures'
+
+    if (newSubject !== q.subject) {
       await supabase.from('questions').update({ subject: newSubject }).eq('id', q.id)
       updated++
     }
@@ -44,3 +48,4 @@ async function migrate() {
 }
 
 migrate()
+

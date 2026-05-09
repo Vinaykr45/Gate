@@ -195,11 +195,11 @@ CREATE TRIGGER learning_progress_updated_at
 -- ============================================================
 
 INSERT INTO public.learning_topics (subject, topic, subtopic, description, order_num) VALUES
-('Computer Science', 'Operating Systems', 'Processes & Threads', 'Process lifecycle, PCB, context switching, thread models, user vs kernel threads', 1),
-('Computer Science', 'Operating Systems', 'CPU Scheduling', 'FCFS, SJF, Round Robin, Priority, Multilevel Queue algorithms and metrics', 2),
-('Computer Science', 'Operating Systems', 'Deadlock', 'Deadlock conditions, Banker''s Algorithm, detection & recovery strategies', 3),
-('Computer Science', 'Operating Systems', 'Memory Management', 'Paging, segmentation, virtual memory, page replacement algorithms', 4),
-('Computer Science', 'Operating Systems', 'File Systems', 'FAT, inode, disk scheduling, RAID levels, directory structures', 5),
+('Computer Science', 'Operating System', 'Processes & Threads', 'Process lifecycle, PCB, context switching, thread models, user vs kernel threads', 1),
+('Computer Science', 'Operating System', 'CPU Scheduling', 'FCFS, SJF, Round Robin, Priority, Multilevel Queue algorithms and metrics', 2),
+('Computer Science', 'Operating System', 'Deadlock', 'Deadlock conditions, Banker''s Algorithm, detection & recovery strategies', 3),
+('Computer Science', 'Operating System', 'Memory Management', 'Paging, segmentation, virtual memory, page replacement algorithms', 4),
+('Computer Science', 'Operating System', 'File Systems', 'FAT, inode, disk scheduling, RAID levels, directory structures', 5),
 ('Computer Science', 'DBMS', 'Relational Model', 'Relations, keys, integrity constraints, relational algebra operations', 6),
 ('Computer Science', 'DBMS', 'Normalization', '1NF through BCNF, functional dependencies, lossless decomposition', 7),
 ('Computer Science', 'DBMS', 'Transactions & Concurrency', 'ACID properties, serializability, lock-based and timestamp protocols', 8),
@@ -271,3 +271,4 @@ FROM public.learning_topics lt,
 ) AS n(title, content, ord)
 WHERE lt.subject = 'Computer Science' AND lt.subtopic = 'Deadlock'
 ON CONFLICT DO NOTHING;
+

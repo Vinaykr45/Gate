@@ -20,12 +20,12 @@ const SUBJECT_META: Record<string, { icon: string; color: string; desc: string; 
     desc: 'Boolean algebra, combinational & sequential circuits, number systems',
     marks: '~4%',
   },
-  'Computer Organization & Architecture': {
+  'Computer Organization and Architecture': {
     icon: '🖥️', color: '#6366f1',
     desc: 'Pipelining, cache, memory hierarchy, I/O, ALU & control unit design',
     marks: '~5%',
   },
-  'Programming & Data Structures': {
+  'Programming and Data Structures': {
     icon: '🌲', color: '#10b981',
     desc: 'C programming, recursion, arrays, stacks, queues, trees, graphs',
     marks: '~12%',
@@ -45,7 +45,7 @@ const SUBJECT_META: Record<string, { icon: string; color: string; desc: string; 
     desc: 'Lexical analysis, parsing, syntax-directed translation, code generation',
     marks: '~6%',
   },
-  'Operating Systems': {
+  'Operating System': {
     icon: '💿', color: '#3b82f6',
     desc: 'Processes, scheduling, deadlock, memory management, virtual memory, file systems',
     marks: '~10%',

@@ -45,7 +45,7 @@ export function AddTopicForm({ subject }: Props) {
         <button onClick={() => setOpen(false)} className="btn-ghost p-1"><X className="w-4 h-4" /></button>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <input className="input text-sm" placeholder="Main Topic (e.g. Operating Systems)"
+        <input className="input text-sm" placeholder="Main Topic (e.g. Operating System)"
           value={topic} onChange={e => setTopic(e.target.value)} />
         <input className="input text-sm" placeholder="Subtopic (e.g. Memory Management)"
           value={subtopic} onChange={e => setSubtopic(e.target.value)} />
@@ -59,3 +59,4 @@ export function AddTopicForm({ subject }: Props) {
     </div>
   )
 }
+

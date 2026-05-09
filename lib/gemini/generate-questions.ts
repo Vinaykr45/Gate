@@ -42,7 +42,7 @@ OUTPUT FORMAT (strict JSON array only):
     },
     "correct_answer": "B",
     "subject": "Computer Science",
-    "topic": "Operating Systems - CPU Scheduling",
+    "topic": "Operating System - CPU Scheduling",
     "difficulty": "medium",
     "explanation": "brief explanation of why B is correct"
   }
@@ -154,3 +154,4 @@ function sanitizeDifficulty(difficulty: unknown): 'easy' | 'medium' | 'hard' {
   const str = String(difficulty || 'medium').toLowerCase()
   return valid.includes(str) ? (str as 'easy' | 'medium' | 'hard') : 'medium'
 }
+

@@ -265,19 +265,19 @@ INSERT INTO public.questions (question_text, options, correct_answer, subject, t
 -- Operating Systems
 ('Which of the following page replacement algorithms suffers from Belady''s anomaly?',
  '{"A": "LRU", "B": "Optimal", "C": "FIFO", "D": "LFU"}',
- 'C', 'Computer Science', 'Operating Systems - Memory Management', 'medium', 2019),
+ 'C', 'Computer Science', 'Operating System - Memory Management', 'medium', 2019),
 
 ('Consider a system with byte-addressable memory, 32-bit logical addresses, 4KB page size, and page table entries of 4 bytes each. The number of bits required for the page offset is:',
  '{"A": "10", "B": "12", "C": "14", "D": "16"}',
- 'B', 'Computer Science', 'Operating Systems - Paging', 'medium', 2020),
+ 'B', 'Computer Science', 'Operating System - Paging', 'medium', 2020),
 
 ('Which scheduling algorithm is also known as "shortest remaining time first"?',
  '{"A": "FCFS", "B": "Round Robin", "C": "SJF Non-preemptive", "D": "SJF Preemptive"}',
- 'D', 'Computer Science', 'Operating Systems - CPU Scheduling', 'easy', 2018),
+ 'D', 'Computer Science', 'Operating System - CPU Scheduling', 'easy', 2018),
 
 ('In the banker''s algorithm, a state is safe if:',
  '{"A": "All processes can complete", "B": "No process is waiting", "C": "Resources are available", "D": "Deadlock is detected"}',
- 'A', 'Computer Science', 'Operating Systems - Deadlock', 'medium', 2021),
+ 'A', 'Computer Science', 'Operating System - Deadlock', 'medium', 2021),
 
 -- DBMS
 ('Which normal form eliminates transitive functional dependencies?',
@@ -348,3 +348,4 @@ INSERT INTO public.questions (question_text, options, correct_answer, subject, t
 ('In a group of 120 students, 80 like Mathematics and 60 like Physics. If 20 like neither, how many like both?',
  '{"A": "30", "B": "40", "C": "50", "D": "60"}',
  'B', 'General Aptitude', 'Set Theory', 'easy', 2018);
+

@@ -17,7 +17,7 @@ Output format:
   {
     "priority": "high",
     "subject": "Computer Science",
-    "topic": "Operating Systems - Deadlock",
+    "topic": "Operating System - Deadlock",
     "message": "Your accuracy in OS Deadlock is only 23%. This is a high-weightage topic in GATE CS.",
     "action": "Solve 20 questions on Banker's Algorithm and Resource Allocation Graphs",
     "accuracy": 23
@@ -119,3 +119,4 @@ function generateFallbackSuggestions(analytics: AnalyticsData): AISuggestion[] {
 
   return suggestions.slice(0, 6)
 }
+

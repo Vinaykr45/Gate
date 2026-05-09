@@ -30,7 +30,7 @@ const SUBJECT_KEYWORD_MAP: Array<{ subject: string; keywords: string[] }> = [
     ],
   },
   {
-    subject: 'Computer Organization & Architecture',
+    subject: 'Computer Organization and Architecture',
     keywords: [
       'machine instruction', 'addressing mode', 'alu', 'data-path', 'control unit',
       'microprogrammed', 'hardwired', 'pipeline', 'pipeline hazard', 'data hazard',
@@ -41,7 +41,7 @@ const SUBJECT_KEYWORD_MAP: Array<{ subject: string; keywords: string[] }> = [
     ],
   },
   {
-    subject: 'Programming & Data Structures',
+    subject: 'Programming and Data Structures',
     keywords: [
       'c language', 'c programming', 'pointer', 'recursion', 'function call',
       'array', 'string', 'stack', 'queue', 'linked list', 'singly linked', 'doubly linked',
@@ -81,7 +81,7 @@ const SUBJECT_KEYWORD_MAP: Array<{ subject: string; keywords: string[] }> = [
     ],
   },
   {
-    subject: 'Operating Systems',
+    subject: 'Operating System',
     keywords: [
       'process', 'thread', 'inter-process communication', 'ipc', 'semaphore', 'mutex',
       'concurrency', 'synchronization', 'critical section', 'monitor',
@@ -213,7 +213,7 @@ function classifySubject(text: string): string {
   for (const { subject, keywords } of SUBJECT_KEYWORD_MAP) {
     if (keywords.some((kw) => lower.includes(kw))) return subject
   }
-  return 'Programming & Data Structures' // default for CS questions
+  return 'Programming and Data Structures' // default for CS questions
 }
 
 function classifyTopic(text: string, subject: string): string {
@@ -247,12 +247,12 @@ DIFFICULTY CLASSIFICATION:
 SUBJECT CLASSIFICATION — use EXACTLY these subject names:
 - "Engineering Mathematics"  → Discrete Math, Linear Algebra, Calculus, Probability, Combinatorics
 - "Digital Logic"            → Boolean algebra, K-map, Flip-flops, Number systems
-- "Computer Organization & Architecture" → Pipelining, Cache, ALU, Addressing modes
-- "Programming & Data Structures" → C programming, Recursion, Arrays, Trees, Linked Lists, Heaps
+- "Computer Organization and Architecture" → Pipelining, Cache, ALU, Addressing modes
+- "Programming and Data Structures" → C programming, Recursion, Arrays, Trees, Linked Lists, Heaps
 - "Algorithms"               → Complexity, Sorting, Greedy, DP, Graph algorithms, NP
 - "Theory of Computation"    → DFA/NFA, Regular languages, CFG, PDA, Turing machines
 - "Compiler Design"          → Lexical analysis, Parsing, Code generation, Syntax-directed
-- "Operating Systems"        → Scheduling, Deadlock, Memory management, File systems
+- "Operating System"        → Scheduling, Deadlock, Memory management, File systems
 - "Databases"                → SQL, Normalization, ER model, B-trees, Transactions
 - "Computer Networks"        → OSI/TCP-IP, Routing, TCP/UDP, MAC protocols, DNS/HTTP
 - "General Aptitude"         → Verbal, Numerical, Logical, Analytical reasoning
@@ -268,7 +268,7 @@ OUTPUT FORMAT (strict JSON array):
       "D": "fourth option text"
     },
     "correct_answer": "A",
-    "subject": "Operating Systems",
+    "subject": "Operating System",
     "topic": "CPU Scheduling Algorithms",
     "difficulty": "medium",
     "year": 2021,
