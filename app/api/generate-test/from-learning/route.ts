@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         type: 'topic',
         subject: topic.subject,
         topic: `${topic.topic} - ${topic.subtopic}`,
-        duration: Math.max(savedQuestions.length * 120, 600), // 2 min/question, min 10 min
+        duration: Math.round(savedQuestions.length * (10800 / 65)),
         question_count: savedQuestions.length,
       })
       .select()

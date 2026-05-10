@@ -36,26 +36,78 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
         .from('test_questions').select('id, order_num, question:questions(*)')
         .eq('test_id', testId).order('order_num')
       setTest(testData)
-      setTimeLeft(testData.duration)
+      const savedTime = localStorage.getItem(`gate_test_time_${testId}`)
+      if (savedTime) {
+        setTimeLeft(parseInt(savedTime, 10))
+      } else {
+        setTimeLeft(testData.duration)
+      }
+
       const fetchedQuestions = (tqs as unknown as TestQuestion[]) || []
       setQuestions(fetchedQuestions)
+
       const initAnswers: Record<string, AnswerState> = {}
       fetchedQuestions.forEach((tq) => {
         initAnswers[tq.question.id] = { selected_option: null, marked_review: false, time_spent: 0 }
       })
-      setAnswers(initAnswers)
+
+      const savedAnswers = localStorage.getItem(`gate_test_answers_${testId}`)
+      if (savedAnswers) {
+        try {
+          const parsedAnswers = JSON.parse(savedAnswers)
+          setAnswers({ ...initAnswers, ...parsedAnswers })
+        } catch (e) {
+          setAnswers(initAnswers)
+        }
+      } else {
+        setAnswers(initAnswers)
+      }
       setLoading(false)
     }
     fetchTest()
   }, [testId, router, supabase])
+  const handleSubmit = useCallback(async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setShowSubmitDialog(false)
+    const submittedAnswers = Object.entries(answers).map(([question_id, ans]) => ({
+      question_id, selected_option: ans.selected_option, time_spent: ans.time_spent, marked_review: ans.marked_review,
+    }))
+    const timeTaken = test ? test.duration - timeLeft : 0
+    const res = await fetch('/api/submit-test', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ testId, answers: submittedAnswers, timeTaken }),
+    })
+    const data = await res.json()
+    if (res.ok && data.attemptId) {
+      localStorage.removeItem(`gate_test_time_${testId}`)
+      localStorage.removeItem(`gate_test_answers_${testId}`)
+      router.push(`/test/${testId}/results?attemptId=${data.attemptId}`)
+    } else {
+      alert('Failed to submit test. Please try again.')
+      setSubmitting(false)
+    }
+  }, [answers, test, timeLeft, testId, submitting, router])
+
 
   useEffect(() => {
     if (loading || timeLeft <= 0) return
     const interval = setInterval(() => {
-      setTimeLeft((prev) => { if (prev <= 1) { handleSubmit(); return 0 } return prev - 1 })
+      setTimeLeft((prev) => { 
+        if (prev <= 1) { handleSubmit(); return 0 } 
+        const newTime = prev - 1
+        localStorage.setItem(`gate_test_time_${testId}`, newTime.toString())
+        return newTime 
+      })
     }, 1000)
     return () => clearInterval(interval)
-  }, [loading, timeLeft])
+  }, [loading, timeLeft, handleSubmit, testId])
+
+  useEffect(() => {
+    if (!loading && Object.keys(answers).length > 0 && testId) {
+      localStorage.setItem(`gate_test_answers_${testId}`, JSON.stringify(answers))
+    }
+  }, [answers, testId, loading])
 
   const currentQuestion = questions[currentIdx]?.question
 
@@ -96,26 +148,7 @@ export default function TestInterfacePage({ params }: { params: Promise<{ testId
     setShowNavPanel(false)
   }
 
-  const handleSubmit = useCallback(async () => {
-    if (submitting) return
-    setSubmitting(true)
-    setShowSubmitDialog(false)
-    const submittedAnswers = Object.entries(answers).map(([question_id, ans]) => ({
-      question_id, selected_option: ans.selected_option, time_spent: ans.time_spent, marked_review: ans.marked_review,
-    }))
-    const timeTaken = test ? test.duration - timeLeft : 0
-    const res = await fetch('/api/submit-test', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ testId, answers: submittedAnswers, timeTaken }),
-    })
-    const data = await res.json()
-    if (res.ok && data.attemptId) {
-      router.push(`/test/${testId}/results?attemptId=${data.attemptId}`)
-    } else {
-      alert('Failed to submit test. Please try again.')
-      setSubmitting(false)
-    }
-  }, [answers, test, timeLeft, testId, submitting, router])
+
 
   const getNavClass = (idx: number) => {
     const q = questions[idx]?.question

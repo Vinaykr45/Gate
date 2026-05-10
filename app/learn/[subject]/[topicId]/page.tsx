@@ -420,7 +420,7 @@ export default function TopicDetailPage({ params }: Props) {
                     </button>
                   </div>
                   {note.content && (
-                    <div className="prose prose-sm prose-invert max-w-none" style={{ color: 'var(--text-secondary)' }}>
+                    <div className="prose prose-sm prose-invert max-w-none break-words overflow-x-auto min-w-0 w-full" style={{ color: 'var(--text-secondary)' }}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
                     </div>
                   )}
@@ -454,8 +454,8 @@ export default function TopicDetailPage({ params }: Props) {
               </button>
             </div>
             {userNotes.map(note => (
-              <div key={note.id} className="card p-4 flex items-start gap-3">
-                <div className="flex-1 prose prose-sm prose-invert max-w-none" style={{ color: 'var(--text-secondary)' }}>
+              <div key={note.id} className="card p-4 flex items-start gap-3 w-full">
+                <div className="flex-1 min-w-0 prose prose-sm prose-invert max-w-none break-words overflow-x-auto w-full" style={{ color: 'var(--text-secondary)' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.content}</ReactMarkdown>
                 </div>
                 <button onClick={() => deleteUserNote(note.id)} className="shrink-0 p-1.5 rounded-lg transition-colors hover:text-red-400"

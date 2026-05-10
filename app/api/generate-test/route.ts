@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         type,
         subject: subject || null,
         topic: topic || null,
-        duration: type === 'full' ? 10800 : type === 'subject' ? 5400 : 1800,
+        duration: Math.round(shuffled.length * (10800 / 65)),
         question_count: shuffled.length,
       })
       .select()

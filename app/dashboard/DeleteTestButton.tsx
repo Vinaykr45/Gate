@@ -3,13 +3,24 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Trash2, Loader2 } from 'lucide-react'
+import Swal from 'sweetalert2'
 
 export default function DeleteTestButton({ testId }: { testId: string }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
 
   const handleDelete = async () => {
-    if (!confirm('Delete this test? This cannot be undone.')) return
+    const result = await Swal.fire({
+      title: 'Delete this test?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!'
+    })
+
+    if (!result.isConfirmed) return
 
     setIsDeleting(true)
     try {
@@ -17,7 +28,7 @@ export default function DeleteTestButton({ testId }: { testId: string }) {
       if (!res.ok) throw new Error('Failed')
       router.refresh()
     } catch {
-      alert('Error deleting test.')
+      Swal.fire('Error', 'Error deleting test.', 'error')
     } finally {
       setIsDeleting(false)
     }
