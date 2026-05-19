@@ -37,42 +37,42 @@ export async function POST(request: NextRequest) {
 
     const fullTopic = custom_topic ? `${topic.topic} — ${custom_topic}` : `${topic.topic} — ${topic.subtopic}`
 
-    const prompt = `You are a GATE CS expert. Generate a concise learning guide for:
+    const prompt = `You are a GATE CS expert and a professional educator. Generate a high-quality, professional learning guide for:
 - Subject: ${topic.subject}
 - Topic: ${topic.topic}
 - Subtopic: ${custom_topic || topic.subtopic}
 
-IMPORTANT: Keep EVERY string value under 150 characters. Be brief and exam-focused.
-Return ONLY a valid JSON object matching this exact schema (no markdown, no extra text):
+Your explanations must be conceptually clear, easy to learn, professional, and comprehensive (full, not partial) while remaining concise and highly relevant to the GATE exam.
+Return ONLY a valid JSON object matching this exact schema (no markdown formatting outside of JSON, no extra text):
 
 {
-  "concept_explanation": "2-3 sentence simple explanation with one analogy. Max 200 chars.",
+  "concept_explanation": "A clear, professional, and comprehensive explanation of the core concept. Make it easy to understand and learn.",
   "key_points": [
-    "Fact 1 (max 100 chars)",
-    "Fact 2",
-    "Fact 3",
-    "Fact 4",
-    "Fact 5"
+    "Important factual point or concept 1",
+    "Important factual point or concept 2",
+    "Important factual point or concept 3",
+    "Important factual point or concept 4",
+    "Important factual point or concept 5"
   ],
   "gate_patterns": [
-    {"pattern": "Question type (max 80 chars)", "tip": "Approach tip (max 100 chars)", "frequency": "High"},
-    {"pattern": "Question type 2", "tip": "Approach tip 2", "frequency": "Medium"}
+    {"pattern": "Question type/pattern", "tip": "Actionable approach/tip to solve", "frequency": "High"},
+    {"pattern": "Question type/pattern 2", "tip": "Actionable approach/tip 2", "frequency": "Medium"}
   ],
   "worked_example": {
-    "question": "Short GATE-style MCQ (max 150 chars)",
-    "solution": "Step-by-step answer (max 200 chars)",
-    "key_insight": "Core concept tested (max 100 chars)"
+    "question": "A realistic GATE-style question",
+    "solution": "Clear, step-by-step solution",
+    "key_insight": "The core trick or concept tested"
   },
-  "mnemonics": ["Trick 1 (max 80 chars)", "Trick 2"],
-  "common_mistakes": ["Mistake 1 (max 100 chars)", "Mistake 2", "Mistake 3"],
+  "mnemonics": ["Memory trick or shortcut 1", "Memory trick or shortcut 2"],
+  "common_mistakes": ["Mistake 1 and how to avoid it", "Mistake 2 and how to avoid it", "Mistake 3 and how to avoid it"],
   "resources": {
     "youtube_searches": ["Search query 1", "Search query 2"],
-    "key_books": ["Book + chapter"]
+    "key_books": ["Standard reference book + chapter/topic"]
   },
   "difficulty_breakdown": {
-    "easy": "What easy Qs test (max 80 chars)",
-    "medium": "What medium Qs test (max 80 chars)",
-    "hard": "What hard Qs test (max 80 chars)"
+    "easy": "Description of what easy questions test",
+    "medium": "Description of what medium questions test",
+    "hard": "Description of what hard questions test"
   }
 }`
 
@@ -101,42 +101,46 @@ Return ONLY a valid JSON object matching this exact schema (no markdown, no extr
       throw new Error('Could not parse Gemini JSON response')
     }
 
-    // Auto-save the concept explanation as a curated note if none exist
+    // Auto-save the concept explanation as a curated note
     if (mode === 'comprehensive') {
-      const { data: existingNotes } = await supabase
-        .from('notes')
-        .select('id')
-        .eq('topic_id', topic_id)
-        .limit(1)
+      const prefix = custom_topic || topic.subtopic;
+      const titles = [
+        `${prefix} — Core Concepts & Resources`,
+        `${prefix} — GATE Patterns & Examples`,
+        `${prefix} — Mistakes & Mnemonics`
+      ];
 
-      if (!existingNotes || existingNotes.length === 0) {
-        const notesToInsert = [
-          {
-            topic_id,
-            title: `${custom_topic || topic.subtopic} — Core Concepts`,
-            content: material.concept_explanation + '\n\n📌 Key Points:\n' + material.key_points.map((p: string, i: number) => `${i + 1}. ${p}`).join('\n'),
-            type: 'text',
-            order_num: 1,
-          },
-          {
-            topic_id,
-            title: 'GATE Question Patterns',
-            content: material.gate_patterns.map((p: { pattern: string; tip: string; frequency: string }) =>
-              `🎯 ${p.pattern} [${p.frequency}]\n→ ${p.tip}`
-            ).join('\n\n'),
-            type: 'text',
-            order_num: 2,
-          },
-          {
-            topic_id,
-            title: 'Common Mistakes to Avoid',
-            content: material.common_mistakes.map((m: string, i: number) => `⚠️ ${i + 1}. ${m}`).join('\n'),
-            type: 'text',
-            order_num: 3,
-          },
-        ]
-        await supabase.from('notes').insert(notesToInsert)
-      }
+      // Delete existing notes with these exact titles for this topic to avoid duplicates
+      await supabase
+        .from('notes')
+        .delete()
+        .eq('topic_id', topic_id)
+        .in('title', titles);
+
+      const notesToInsert = [
+        {
+          topic_id,
+          title: titles[0],
+          content: `### 💡 Concept Explanation\n${material.concept_explanation}\n\n---\n\n### 📌 Key Points\n${material.key_points.map((p: string, i: number) => `* **${i + 1}.** ${p}`).join('\n')}\n\n---\n\n### 📚 Additional Resources\n* **Books:** ${material.resources.key_books.join(', ')}\n* **Search Terms:** ${material.resources.youtube_searches.map(s => `\`${s}\``).join(', ')}`,
+          type: 'text',
+          order_num: 1,
+        },
+        {
+          topic_id,
+          title: titles[1],
+          content: `### 🎯 GATE Question Patterns\n${material.gate_patterns.map(p => `#### 📌 ${p.pattern}\n**Frequency:** \`${p.frequency}\`\n> 💡 **Tip:** ${p.tip}`).join('\n\n')}\n\n---\n\n### 📝 Worked Example\n**Q:** ${material.worked_example.question}\n\n**Solution:**\n${material.worked_example.solution}\n\n> **Key Insight:** ${material.worked_example.key_insight}\n\n---\n\n### 📊 Difficulty Breakdown\n* **Easy:** ${material.difficulty_breakdown.easy}\n* **Medium:** ${material.difficulty_breakdown.medium}\n* **Hard:** ${material.difficulty_breakdown.hard}`,
+          type: 'text',
+          order_num: 2,
+        },
+        {
+          topic_id,
+          title: titles[2],
+          content: `### ⚠️ Common Pitfalls & Mistakes\n${material.common_mistakes.map((m: string) => `* ❌ ${m}`).join('\n')}\n\n---\n\n### 🧠 Mnemonics & Memory Tricks\n${material.mnemonics.map(m => `* ✨ ${m}`).join('\n')}`,
+          type: 'text',
+          order_num: 3,
+        },
+      ]
+      await supabase.from('notes').insert(notesToInsert)
     }
 
     return NextResponse.json({ material, topic: fullTopic })

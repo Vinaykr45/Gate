@@ -188,6 +188,27 @@
 .prose > :last-child {
   margin-bottom: 0;
 }
+.prose strong,
+.prose b {
+  color: var(--text-primary) !important;
+  font-weight: 700;
+}
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+  color: var(--text-primary) !important;
+}
+.prose blockquote {
+  color: var(--text-secondary) !important;
+  border-left-color: var(--indigo) !important;
+}
+.prose code {
+  color: var(--purple) !important;
+}
+.prose em, .prose i {
+  color: var(--text-primary) !important;
+}
+.prose::marker, .prose li::marker {
+  color: var(--text-muted) !important;
+}
 
 html {
   scroll-behavior: smooth;
