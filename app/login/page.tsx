@@ -48,12 +48,12 @@ export default function LoginPage() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-              style={{ background: 'var(--brand-gradient)' }}>G</div>
-            <span className="text-white font-bold text-xl">GateFlow <span className="gradient-text">Pro</span></span>
+              style={{ background: 'linear-gradient(135deg,#0f172a,#4f46e5)', border: '1px solid rgba(99,102,241,0.3)' }}>P</div>
+            <span className="text-white font-bold text-xl">PrepAxis <span className="gradient-text">AI</span></span>
           </Link>
           <h1 className="text-3xl font-bold text-white">Welcome back</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Sign in to continue your GATE preparation
+            Sign in to continue your GATE & CA preparation
           </p>
         </div>
 

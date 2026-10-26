@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { findRegistryTopic, getCurriculumTopicsForSubject } from '@/lib/curriculum/registry'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { searchParams } = new URL(request.url)
   const subject = searchParams.get('subject')
@@ -14,18 +14,44 @@ export async function GET(request: Request) {
   if (subject) query = query.eq('subject', subject)
   if (topicId) query = query.eq('id', topicId)
 
-  const { data: topics, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { data: dbTopics, error } = await query
 
-  const topicIds = topics?.map(t => t.id) ?? []
-  const { data: progress } = await supabase
-    .from('learning_progress')
-    .select('*')
-    .eq('user_id', user.id)
-    .in('topic_id', topicIds)
+  let topics = dbTopics || []
 
-  const progressMap = new Map(progress?.map(p => [p.topic_id, p]) ?? [])
-  const enriched = topics?.map(t => ({ ...t, progress: progressMap.get(t.id) ?? null })) ?? []
+  // If not found in database, check official CURRICULUM_REGISTRY
+  if (topics.length === 0) {
+    if (topicId) {
+      const regTopic = findRegistryTopic(topicId, subject || undefined)
+      if (regTopic) {
+        topics = [regTopic as any]
+      }
+    } else if (subject) {
+      const regTopics = getCurriculumTopicsForSubject(subject)
+      if (regTopics.length > 0) {
+        topics = regTopics as any
+      }
+    }
+  }
+
+  // Enrich with user progress if user is authenticated
+  let progressMap = new Map()
+  if (user && topics.length > 0) {
+    const topicIds = topics.map(t => t.id)
+    const { data: progress } = await supabase
+      .from('learning_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('topic_id', topicIds)
+
+    if (progress) {
+      progressMap = new Map(progress.map(p => [p.topic_id, p]))
+    }
+  }
+
+  const enriched = topics.map(t => ({
+    ...t,
+    progress: progressMap.get(t.id) ?? null,
+  }))
 
   return NextResponse.json({ topics: enriched })
 }

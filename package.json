@@ -1,12 +1,14 @@
 {
-  "name": "gate",
-  "version": "0.1.0",
+  "name": "prepaxis-ai",
+  "version": "1.0.0",
+  "description": "PrepAxis AI — Prepare Smarter. Practice Better. Perform Stronger.",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --experimental-strip-types --test tests/ai-router.test.ts tests/curriculum.test.ts tests/study-planner-and-srs.test.ts tests/scoring.test.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

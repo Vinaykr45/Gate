@@ -9,7 +9,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem('gateflow-theme') as 'dark' | 'light' | null
+    const stored = (localStorage.getItem('prepaxis-theme') || localStorage.getItem('gateflow-theme')) as 'dark' | 'light' | null
     const preferred = stored ?? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
     setTheme(preferred)
     document.documentElement.setAttribute('data-theme', preferred)
@@ -18,7 +18,7 @@ export function ThemeToggle() {
   const toggle = () => {
     const next = theme === 'dark' ? 'light' : 'dark'
     setTheme(next)
-    localStorage.setItem('gateflow-theme', next)
+    localStorage.setItem('prepaxis-theme', next)
     document.documentElement.setAttribute('data-theme', next)
   }
 

@@ -48,18 +48,38 @@ function nextKey(): string {
 
 // ── Model fallback chain ───────────────────────────────────────────────────
 export const MODEL_CHAIN = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
+  'gemini-3-flash-preview',
+  'gemini-3.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.8-flash',
 ] as const
 
 export type GeminiModel = (typeof MODEL_CHAIN)[number]
 
+/**
+ * Normalizes model names and aliases to official Google Gemini API identifiers
+ */
+export function normalizeModelName(m: string): string {
+  const norm = m.toLowerCase().trim()
+  if (norm === 'gemini-3-flash' || norm === '3-flash' || norm === '3 flash') return 'gemini-3-flash-preview'
+  if (norm === 'gemini-3.5-flash-lite' || norm === '3.5-flash-lite' || norm === '3.5 flash lite') return 'gemini-3.5-flash-lite'
+  return m
+}
+
 // ── Retry-able error detection ─────────────────────────────────────────────
 function isRetryable(err: unknown): boolean {
   const s = (err as { status?: number })?.status
-  const msg = String(err)
-  return s === 429 || s === 503 || msg.includes('429') || msg.includes('503')
+  const msg = String(err).toLowerCase()
+  return (
+    s === 429 ||
+    s === 503 ||
+    msg.includes('429') ||
+    msg.includes('503') ||
+    msg.includes('quota') ||
+    msg.includes('demand') ||
+    msg.includes('temporar') ||
+    msg.includes('unavailable')
+  )
 }
 
 // ── Core: generate with automatic key rotation + model fallback ───────────
@@ -117,14 +137,15 @@ export async function generateWithFallback(opts: GenerateOptions): Promise<Gener
           }
 
           const client = new GoogleGenerativeAI(key)
-          const model = client.getGenerativeModel({ model: modelName, generationConfig: config })
+          const targetModel = normalizeModelName(modelName)
+          const model = client.getGenerativeModel({ model: targetModel, generationConfig: config })
           const result = await model.generateContent(prompt)
           const text = result.response.text()
 
           // Advance the global round-robin past the key that worked
           keyIndex = (usedKeyIndex + 1) % totalKeys
-          console.log(`[Gemini] ✓ ${modelName} | key[${usedKeyIndex + 1}/${totalKeys}] | attempt ${attempt + 1}`)
-          return { text, model: modelName, keyIndex: usedKeyIndex }
+          console.log(`[Gemini] ✓ ${targetModel} | key[${usedKeyIndex + 1}/${totalKeys}] | attempt ${attempt + 1}`)
+          return { text, model: targetModel, keyIndex: usedKeyIndex }
 
         } catch (err: unknown) {
           lastError = err
@@ -152,7 +173,7 @@ export function isOverloadError(err: unknown): boolean {
 const _primary = new GoogleGenerativeAI(API_KEYS[0] ?? '')
 
 export const geminiModel = _primary.getGenerativeModel({
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   generationConfig: {
     temperature: 0.1,
     topP: 0.8,
@@ -163,7 +184,7 @@ export const geminiModel = _primary.getGenerativeModel({
 })
 
 export const geminiSuggestModel = _primary.getGenerativeModel({
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   generationConfig: {
     temperature: 0.4,
     topP: 0.9,

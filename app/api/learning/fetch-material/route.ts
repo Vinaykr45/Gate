@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateWithFallback } from '@/lib/gemini/client'
+import { findRegistryTopic } from '@/lib/curriculum/registry'
+import { ensureTopicInDb, isUUID } from '@/lib/curriculum/ensure-topic'
 
 /**
  * POST /api/learning/fetch-material
@@ -8,7 +10,7 @@ import { generateWithFallback } from '@/lib/gemini/client'
  * Uses Gemini to generate rich learning material for a topic:
  * - concept_explanation: detailed explanation
  * - key_formulas: important formulas/rules
- * - gate_patterns: common GATE question patterns
+ * - gate_patterns: common question patterns
  * - mnemonics: memory tricks
  * - worked_examples: 2-3 solved examples
  * - further_reading: suggested YouTube searches & resources
@@ -24,20 +26,36 @@ export async function POST(request: NextRequest) {
     const { topic_id, mode = 'ai', custom_topic } = await request.json()
     if (!topic_id) return NextResponse.json({ error: 'topic_id is required' }, { status: 400 })
 
-    // Fetch topic metadata
-    const { data: topic, error: topicError } = await supabase
-      .from('learning_topics')
-      .select('*')
-      .eq('id', topic_id)
-      .single()
+    // Fetch topic metadata from database or CURRICULUM_REGISTRY
+    let topic: any = null
 
-    if (topicError || !topic) {
-      return NextResponse.json({ error: 'Topic not found' }, { status: 404 })
+    if (isUUID(topic_id)) {
+      const { data: dbTopic } = await supabase
+        .from('learning_topics')
+        .select('*')
+        .eq('id', topic_id)
+        .maybeSingle()
+      if (dbTopic) topic = dbTopic
+    }
+
+    if (!topic) {
+      topic = findRegistryTopic(topic_id)
+    }
+
+    if (!topic) {
+      const cleanTitle = (custom_topic || topic_id).replace(/[-_]/g, ' ')
+      topic = {
+        id: topic_id,
+        subject: 'Curriculum',
+        topic: cleanTitle,
+        subtopic: cleanTitle,
+        description: 'Comprehensive preparation concepts and syllabus insights',
+      }
     }
 
     const fullTopic = custom_topic ? `${topic.topic} — ${custom_topic}` : `${topic.topic} — ${topic.subtopic}`
 
-    const prompt = `You are a GATE CS expert and a professional educator. Generate a high-quality, professional learning guide for:
+    const prompt = `You are an expert exam educator for ${topic.subject} (${topic.track || 'Engineering & Professional Exams'}). Generate a high-quality, professional learning guide for:
 - Subject: ${topic.subject}
 - Topic: ${topic.topic}
 - Subtopic: ${custom_topic || topic.subtopic}
@@ -103,44 +121,55 @@ Return ONLY a valid JSON object matching this exact schema (no markdown formatti
 
     // Auto-save the concept explanation as a curated note
     if (mode === 'comprehensive') {
-      const prefix = custom_topic || topic.subtopic;
-      const titles = [
-        `${prefix} — Core Concepts & Resources`,
-        `${prefix} — GATE Patterns & Examples`,
-        `${prefix} — Mistakes & Mnemonics`
-      ];
+      const dbTopicId = await ensureTopicInDb(supabase, topic_id, topic)
 
-      // Delete existing notes with these exact titles for this topic to avoid duplicates
-      await supabase
-        .from('notes')
-        .delete()
-        .eq('topic_id', topic_id)
-        .in('title', titles);
+      if (dbTopicId) {
+        const prefix = custom_topic || topic.subtopic
+        const titles = [
+          `${prefix} — Core Concepts & Resources`,
+          `${prefix} — Question Patterns & Examples`,
+          `${prefix} — Mistakes & Mnemonics`,
+        ]
 
-      const notesToInsert = [
-        {
-          topic_id,
-          title: titles[0],
-          content: `### 💡 Concept Explanation\n${material.concept_explanation}\n\n---\n\n### 📌 Key Points\n${material.key_points.map((p: string, i: number) => `* **${i + 1}.** ${p}`).join('\n')}\n\n---\n\n### 📚 Additional Resources\n* **Books:** ${material.resources.key_books.join(', ')}\n* **Search Terms:** ${material.resources.youtube_searches.map(s => `\`${s}\``).join(', ')}`,
-          type: 'text',
-          order_num: 1,
-        },
-        {
-          topic_id,
-          title: titles[1],
-          content: `### 🎯 GATE Question Patterns\n${material.gate_patterns.map(p => `#### 📌 ${p.pattern}\n**Frequency:** \`${p.frequency}\`\n> 💡 **Tip:** ${p.tip}`).join('\n\n')}\n\n---\n\n### 📝 Worked Example\n**Q:** ${material.worked_example.question}\n\n**Solution:**\n${material.worked_example.solution}\n\n> **Key Insight:** ${material.worked_example.key_insight}\n\n---\n\n### 📊 Difficulty Breakdown\n* **Easy:** ${material.difficulty_breakdown.easy}\n* **Medium:** ${material.difficulty_breakdown.medium}\n* **Hard:** ${material.difficulty_breakdown.hard}`,
-          type: 'text',
-          order_num: 2,
-        },
-        {
-          topic_id,
-          title: titles[2],
-          content: `### ⚠️ Common Pitfalls & Mistakes\n${material.common_mistakes.map((m: string) => `* ❌ ${m}`).join('\n')}\n\n---\n\n### 🧠 Mnemonics & Memory Tricks\n${material.mnemonics.map(m => `* ✨ ${m}`).join('\n')}`,
-          type: 'text',
-          order_num: 3,
-        },
-      ]
-      await supabase.from('notes').insert(notesToInsert)
+        // Delete existing notes with these exact titles for this topic to avoid duplicates
+        await supabase
+          .from('notes')
+          .delete()
+          .eq('topic_id', dbTopicId)
+          .in('title', titles)
+
+        const notesToInsert = [
+          {
+            topic_id: dbTopicId,
+            title: titles[0],
+            content: `### 💡 Concept Explanation\n${material.concept_explanation}\n\n---\n\n### 📌 Key Points\n${material.key_points.map((p: string, i: number) => `* **${i + 1}.** ${p}`).join('\n')}\n\n---\n\n### 📚 Additional Resources\n* **Books:** ${(material.resources?.key_books || []).join(', ')}\n* **Search Terms:** ${(material.resources?.youtube_searches || []).map((s: string) => `\`${s}\``).join(', ')}`,
+            type: 'text',
+            order_num: 1,
+          },
+          {
+            topic_id: dbTopicId,
+            title: titles[1],
+            content: `### 🎯 Question Patterns\n${(material.gate_patterns || []).map((p: any) => `#### 📌 ${p.pattern}\n**Frequency:** \`${p.frequency}\`\n> 💡 **Tip:** ${p.tip}`).join('\n\n')}\n\n---\n\n### 📝 Worked Example\n**Q:** ${material.worked_example?.question || ''}\n\n**Solution:**\n${material.worked_example?.solution || ''}\n\n> **Key Insight:** ${material.worked_example?.key_insight || ''}\n\n---\n\n### 📊 Difficulty Breakdown\n* **Easy:** ${material.difficulty_breakdown?.easy || 'N/A'}\n* **Medium:** ${material.difficulty_breakdown?.medium || 'N/A'}\n* **Hard:** ${material.difficulty_breakdown?.hard || 'N/A'}`,
+            type: 'text',
+            order_num: 2,
+          },
+          {
+            topic_id: dbTopicId,
+            title: titles[2],
+            content: `### ⚠️ Common Pitfalls & Mistakes\n${(material.common_mistakes || []).map((m: string) => `* ❌ ${m}`).join('\n')}\n\n---\n\n### 🧠 Mnemonics & Memory Tricks\n${(material.mnemonics || []).map((m: string) => `* ✨ ${m}`).join('\n')}`,
+            type: 'text',
+            order_num: 3,
+          },
+        ]
+        await supabase.from('notes').insert(notesToInsert)
+
+        // Also add user summary note
+        await supabase.from('user_notes').insert({
+          user_id: user.id,
+          topic_id: dbTopicId,
+          content: `## 📖 ${prefix} Summary\n\n${material.concept_explanation}\n\n${(material.key_points || []).slice(0, 4).map((k: string) => `• ${k}`).join('\n')}`,
+        })
+      }
     }
 
     return NextResponse.json({ material, topic: fullTopic })

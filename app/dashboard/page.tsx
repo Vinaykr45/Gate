@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/utils'
 import { BookOpen, FlaskConical, ArrowRight, Clock, CheckCircle2, History } from 'lucide-react'
 
 
-export const metadata = { title: 'Dashboard — GateFlow Pro' }
+export const metadata = { title: 'Dashboard — PrepAxis AI' }
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
             Good {greeting} 👋
           </div>
           <h1 className="text-3xl font-black mb-1" style={{ color: 'var(--text-primary)' }}>
-            {profile?.full_name ? `Welcome back, ${profile.full_name.split(' ')[0]}!` : 'Your GATE Dashboard'}
+            {profile?.full_name ? `Welcome back, ${profile.full_name.split(' ')[0]}!` : 'Your PrepAxis Dashboard'}
           </h1>
           <p style={{ color: 'var(--text-secondary)' }}>
             {totalTests === 0

@@ -1,51 +1,80 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { generateWithFallback } from '@/lib/gemini/client'
+import { aiRouter } from '@/lib/ai/router'
+import { aiCache } from '@/lib/ai/cache'
+import { extractJsonFromText } from '@/lib/ai/validation'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { topic, subject, subtopic } = await request.json()
+  const { topic, subject, subtopic, examTrack = 'gate_cse' } = await request.json()
   if (!topic || !subject) return NextResponse.json({ error: 'topic and subject required' }, { status: 400 })
 
   const fullTopic = subtopic ? `${topic} — ${subtopic}` : topic
+  const cacheKey = `summary_${examTrack}_${subject}_${fullTopic}`
 
-  const prompt = `You are an expert GATE CS tutor. Generate a structured summary for the topic: "${fullTopic}" (Subject: ${subject}).
+  // Check cache first
+  const cached = aiCache.get<Record<string, unknown>>(cacheKey)
+  if (cached) {
+    return NextResponse.json({ summary: cached, cached: true })
+  }
+
+  const prompt = `You are an expert tutor for ${examTrack.toUpperCase()}. Generate a structured revision summary for the topic: "${fullTopic}" (Subject: ${subject}).
 
 Return ONLY valid JSON in this exact format:
 {
-  "easyExplanation": "A simple 3-4 sentence explanation using everyday analogies. No jargon.",
+  "easyExplanation": "A clear, intuitive 3-4 sentence explanation. No unnecessary jargon.",
   "keyPoints": [
-    "Key point 1 (formula, rule, or concept)",
+    "Key point 1 (formula, rule, section, or core concept)",
     "Key point 2",
     "Key point 3",
     "Key point 4",
     "Key point 5"
   ],
-  "revisionNotes": "Compact 5-8 line revision summary with GATE-specific tips, common question patterns, and what to memorize."
+  "revisionNotes": "Compact 5-8 line revision summary with examination tips, common question patterns, and memorization anchors."
 }
 
-Focus on what GATE aspirants need to know. Be precise and exam-oriented.`
+Focus on what aspirants need to know. Be precise and exam-oriented.`
 
   try {
-    const { text } = await generateWithFallback({
-      prompt,
-      generationConfig: { temperature: 0.3, maxOutputTokens: 2048, responseMimeType: 'application/json' },
-    })
+    const { data } = await aiRouter.generateJSON<Record<string, unknown>>(
+      {
+        messages: [
+          { role: 'system', content: `You are an expert faculty for ${examTrack}.` },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
+      },
+      (parsed) => {
+        const obj = parsed as Record<string, unknown>
+        if (!obj || typeof obj !== 'object') throw new Error('Invalid JSON structure')
+        return obj
+      }
+    )
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON in response')
+    // Cache the summary for 24 hours (reusable across students safely)
+    aiCache.set(cacheKey, data, 86400)
 
-    const summary = JSON.parse(jsonMatch[0])
-    return NextResponse.json({ summary })
+    return NextResponse.json({ summary: data })
   } catch (err) {
     console.error('AI summary error:', err)
-    const msg = String(err)
-    if (msg.includes('503') || msg.includes('429') || msg.includes('busy')) {
-      return NextResponse.json({ error: 'AI service is temporarily busy. Please try again shortly.' }, { status: 503 })
-    }
-    return NextResponse.json({ error: 'Failed to generate summary' }, { status: 500 })
+    return NextResponse.json(
+      {
+        summary: {
+          easyExplanation: `${fullTopic} is a core foundation topic in ${subject}. It establishes the primary rules and operating principles for problem solving.`,
+          keyPoints: [
+            `Understand the fundamental definition and scope of ${fullTopic}.`,
+            'Identify boundary conditions and standard constraints.',
+            'Memorize the core relationships and formulas.',
+            'Practice past examination questions to recognize typical patterns.',
+          ],
+          revisionNotes: `Review textbook notes and lecture materials for ${fullTopic}. Pay attention to edge cases and calculation accuracy.`,
+        },
+        fallback: true,
+      },
+      { status: 200 }
+    )
   }
 }

@@ -1,14 +1,22 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
+import { BRAND } from '@/lib/brand'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | GateFlow Pro',
-    default: 'GateFlow Pro — AI-Powered GATE Exam Preparation',
+    template: BRAND.seo.titleTemplate,
+    default: BRAND.seo.defaultTitle,
   },
-  description: 'Crack GATE with AI-powered mock tests, personalized analytics, and smart question extraction.',
-  keywords: ['GATE exam', 'GATE preparation', 'mock test', 'GATE CSE', 'AI study', 'PYQ'],
+  description: BRAND.description,
+  keywords: [...BRAND.seo.keywords],
+  authors: [{ name: BRAND.company }],
+  openGraph: {
+    title: BRAND.seo.defaultTitle,
+    description: BRAND.description,
+    type: 'website',
+    siteName: BRAND.name,
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: `
           try {
-            var t = localStorage.getItem('gateflow-theme');
+            var t = localStorage.getItem('prepaxis-theme') || localStorage.getItem('gateflow-theme');
             if (!t) t = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', t);
           } catch(e) {}

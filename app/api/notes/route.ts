@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { ensureTopicInDb, isUUID } from '@/lib/curriculum/ensure-topic'
 
 export async function GET(request: Request) {
   const supabase = await createClient()
@@ -10,9 +11,17 @@ export async function GET(request: Request) {
   const topicId = searchParams.get('topic_id')
   if (!topicId) return NextResponse.json({ error: 'topic_id required' }, { status: 400 })
 
+  // Resolve valid database UUID for this topic if needed
+  const dbTopicId = await ensureTopicInDb(supabase, topicId)
+  const targetId = dbTopicId || (isUUID(topicId) ? topicId : null)
+
+  if (!targetId) {
+    return NextResponse.json({ notes: [], userNotes: [] })
+  }
+
   const [{ data: notes }, { data: userNotes }, { data: bookmarks }] = await Promise.all([
-    supabase.from('notes').select('*').eq('topic_id', topicId).order('order_num'),
-    supabase.from('user_notes').select('*').eq('topic_id', topicId).eq('user_id', user.id).order('created_at', { ascending: false }),
+    supabase.from('notes').select('*').eq('topic_id', targetId).order('order_num'),
+    supabase.from('user_notes').select('*').eq('topic_id', targetId).eq('user_id', user.id).order('created_at', { ascending: false }),
     supabase.from('note_bookmarks').select('note_id').eq('user_id', user.id),
   ])
 
@@ -41,22 +50,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ bookmarked: true })
   }
 
+  // Resolve target UUID in database
+  const targetId = topic_id ? (await ensureTopicInDb(supabase, topic_id)) || (isUUID(topic_id) ? topic_id : null) : null
+
   // Add a curated note (admin action — any authenticated user for now)
-  if (action === 'curated' && topic_id && title) {
+  if (action === 'curated' && targetId && title) {
     const { data: existing } = await supabase
-      .from('notes').select('order_num').eq('topic_id', topic_id).order('order_num', { ascending: false }).limit(1)
+      .from('notes').select('order_num').eq('topic_id', targetId).order('order_num', { ascending: false }).limit(1)
     const nextOrder = (existing?.[0]?.order_num ?? 0) + 1
     const { data, error } = await supabase
       .from('notes')
-      .insert({ topic_id, title, content: content ?? null, link: link ?? null, type: type ?? 'text', order_num: nextOrder })
+      .insert({ topic_id: targetId, title, content: content ?? null, link: link ?? null, type: type ?? 'text', order_num: nextOrder })
       .select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ note: data })
   }
 
   // Add a personal user note
-  if (content && topic_id) {
-    const { data, error } = await supabase.from('user_notes').insert({ user_id: user.id, topic_id, content }).select().single()
+  if (content && targetId) {
+    const { data, error } = await supabase.from('user_notes').insert({ user_id: user.id, topic_id: targetId, content }).select().single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json({ note: data })
   }

@@ -17,17 +17,41 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { testId, answers, timeTaken } = await request.json() as {
+    const { testId, answers, timeTaken, attemptId } = await request.json() as {
       testId: string
       answers: SubmitAnswer[]
       timeTaken: number
+      attemptId?: string
     }
 
     if (!testId || !answers || !Array.isArray(answers)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Verify the test belongs to this user
+    // Idempotency check: if an existing completed attempt is referenced, return it directly
+    if (attemptId) {
+      const { data: existingAttempt } = await supabase
+        .from('attempts')
+        .select('*')
+        .eq('id', attemptId)
+        .eq('user_id', user.id)
+        .eq('completed', true)
+        .single()
+
+      if (existingAttempt) {
+        return NextResponse.json({
+          success: true,
+          attemptId: existingAttempt.id,
+          score: existingAttempt.score,
+          totalMarks: existingAttempt.total_marks,
+          accuracy: existingAttempt.accuracy,
+          timeTaken: existingAttempt.time_taken,
+          isDuplicate: true,
+        })
+      }
+    }
+
+    // Verify test belongs to this user
     const { data: test, error: testError } = await supabase
       .from('tests')
       .select('*')
@@ -39,11 +63,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Test not found' }, { status: 404 })
     }
 
-    // Fetch correct answers and options for all questions in the test
+    // Fetch correct answers, options, and metadata
     const questionIds = answers.map((a) => a.question_id)
     const { data: questions, error: questionsError } = await supabase
       .from('questions')
-      .select('id, correct_answer, options')
+      .select('id, correct_answer, options, subject, topic, difficulty')
       .in('id', questionIds)
 
     if (questionsError) {
@@ -52,16 +76,28 @@ export async function POST(request: NextRequest) {
 
     const questionMap = new Map(questions?.map((q) => [q.id, q]) || [])
 
-    // Calculate scores
+    // Determine exam track & negative marking rules
+    const examTrack = (test.exam_track || 'gate_cse').toLowerCase()
+    let negMarkDeduction = 0.33
+
+    if (examTrack === 'ca_foundation') {
+      // CA Foundation Paper 3 & 4 have 0.25 negative marks
+      negMarkDeduction = 0.25
+    } else if (examTrack === 'ca_intermediate' || examTrack === 'ca_final') {
+      // CA Inter & Final 30% MCQs have NO negative marking under ICAI New Scheme
+      negMarkDeduction = 0.0
+    }
+
     let score = 0
     let correct = 0
     let incorrect = 0
     let unattempted = 0
+    const incorrectQuestionsToRevise: Array<{ questionId: string; subject: string; topic: string }> = []
 
     const processedAnswers = answers.map((answer) => {
       const q = questionMap.get(answer.question_id)
       const correctAnswer = q?.correct_answer
-      const qOptions = q?.options as any
+      const qOptions = q?.options as Record<string, unknown> | undefined
       const isMSQ = qOptions?._type === 'MSQ'
       const isNAT = qOptions?._type === 'NAT'
 
@@ -69,12 +105,10 @@ export async function POST(request: NextRequest) {
 
       if (answer.selected_option && correctAnswer && correctAnswer !== 'unknown') {
         if (isNAT) {
-          // Check if NAT is a range e.g. "2.4-2.6" or "-1.5--1.0"
-          // We can just use a simple regex or check if it's a direct match
           if (answer.selected_option === correctAnswer) {
             isCorrect = true
           } else {
-            const parts = correctAnswer.split(/(?<!^)-/) // Split by '-' but not if it's the first char
+            const parts = correctAnswer.split(/(?<!^)-/)
             if (parts.length === 2) {
               const min = parseFloat(parts[0])
               const max = parseFloat(parts[1])
@@ -85,8 +119,7 @@ export async function POST(request: NextRequest) {
             }
           }
         } else {
-          // MCQ or MSQ
-          isCorrect = answer.selected_option === correctAnswer
+          isCorrect = answer.selected_option.trim() === correctAnswer.trim()
         }
       }
 
@@ -94,11 +127,18 @@ export async function POST(request: NextRequest) {
         unattempted++
       } else if (isCorrect) {
         correct++
-        score += 1 // +1 for correct
+        score += 1 // Standard 1 mark
       } else {
         incorrect++
         if (!isMSQ && !isNAT) {
-          score -= 0.33 // -0.33 for incorrect MCQ. NAT and MSQ have NO negative marking in GATE
+          score -= negMarkDeduction
+        }
+        if (q) {
+          incorrectQuestionsToRevise.push({
+            questionId: answer.question_id,
+            subject: q.subject || 'Core',
+            topic: q.topic || 'General',
+          })
         }
       }
 
@@ -112,9 +152,9 @@ export async function POST(request: NextRequest) {
     })
 
     const totalMarks = answers.length
-    const accuracy = answers.length > 0
-      ? (correct / answers.filter((a) => a.selected_option).length) * 100 || 0
-      : 0
+    const attemptedCount = correct + incorrect
+    const accuracy = attemptedCount > 0 ? (correct / attemptedCount) * 100 : 0
+    const normalizedScore = Math.max(0, parseFloat(score.toFixed(2)))
 
     // Create attempt record
     const { data: attempt, error: attemptError } = await supabase
@@ -122,7 +162,7 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         test_id: testId,
-        score: Math.max(0, parseFloat(score.toFixed(2))),
+        score: normalizedScore,
         total_marks: totalMarks,
         accuracy: parseFloat(accuracy.toFixed(2)),
         time_taken: timeTaken || 0,
@@ -137,18 +177,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save attempt' }, { status: 500 })
     }
 
-    // Insert all answers
+    // Insert answers
     const answersToInsert = processedAnswers.map((a) => ({
       ...a,
       attempt_id: attempt.id,
     }))
 
-    const { error: answersError } = await supabase
-      .from('answers')
-      .insert(answersToInsert)
+    await supabase.from('answers').insert(answersToInsert)
 
-    if (answersError) {
-      console.error('Answers insert error:', answersError)
+    // Automatically update student's Mistake Book / SRS if table exists
+    if (incorrectQuestionsToRevise.length > 0) {
+      for (const item of incorrectQuestionsToRevise) {
+        try {
+          await supabase
+            .from('revision_items')
+            .upsert(
+              {
+                user_id: user.id,
+                question_id: item.questionId,
+                exam_track: examTrack,
+                subject: item.subject,
+                topic: item.topic,
+                mistake_count: 1,
+                repetitions: 0,
+                ease_factor: 2.50,
+                interval_days: 1,
+                last_reviewed: new Date().toISOString(),
+                next_due_date: new Date(Date.now() + 86400000).toISOString(),
+              },
+              { onConflict: 'user_id,question_id' }
+            )
+        } catch {
+          // Non-fatal if table not yet migrated
+        }
+      }
     }
 
     return NextResponse.json({

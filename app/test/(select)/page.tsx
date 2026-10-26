@@ -123,12 +123,15 @@ export default function TestPage() {
     setGenerating(true)
     setError('')
 
+    const activeTrack = typeof window !== 'undefined' ? (localStorage.getItem('prepaxis_active_track') || 'gate_cse') : 'gate_cse'
+
     const body = {
       type: testType,
       subject: testType !== 'full' ? selectedSubject : undefined,
       topic: testType === 'topic' ? (selectedTopic || undefined) : undefined,
       count: questionCount,
       difficulty: difficulty || undefined,
+      examTrack: activeTrack,
     }
 
     try {

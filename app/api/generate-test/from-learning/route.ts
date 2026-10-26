@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateQuestionsFromTopicContent } from '@/lib/gemini/generate-questions'
+import { findRegistryTopic } from '@/lib/curriculum/registry'
+
+const isUUID = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
 
 /**
  * POST /api/generate-test/from-learning
@@ -29,37 +32,48 @@ export async function POST(request: NextRequest) {
 
     const questionCount = Math.min(Math.max(parseInt(count) || 10, 3), 30)
 
-    // ── 1. Fetch topic metadata ──────────────────────────────────
-    const { data: topic, error: topicError } = await supabase
-      .from('learning_topics')
-      .select('*')
-      .eq('id', topic_id)
-      .single()
+    // ── 1. Fetch topic metadata from DB or CURRICULUM_REGISTRY ────
+    let topic: any = null
 
-    if (topicError || !topic) {
-      return NextResponse.json({ error: 'Topic not found' }, { status: 404 })
+    if (isUUID(topic_id)) {
+      const { data: dbTopic } = await supabase
+        .from('learning_topics')
+        .select('*')
+        .eq('id', topic_id)
+        .maybeSingle()
+      if (dbTopic) topic = dbTopic
+    }
+
+    if (!topic) {
+      topic = findRegistryTopic(topic_id)
+    }
+
+    if (!topic) {
+      const cleanTitle = topic_id.replace(/[-_]/g, ' ')
+      topic = {
+        id: topic_id,
+        subject: 'Curriculum',
+        topic: cleanTitle,
+        subtopic: cleanTitle,
+        description: `${cleanTitle} practice examination`,
+      }
     }
 
     // ── 2. Fetch curated notes for this topic ────────────────────
-    const { data: notes } = await supabase
-      .from('notes')
-      .select('title, content')
-      .eq('topic_id', topic_id)
-      .order('order_num')
+    let notes: any[] = []
+    let videos: any[] = []
+    let userNotes: any[] = []
 
-    // ── 3. Fetch video titles for this topic ─────────────────────
-    const { data: videos } = await supabase
-      .from('videos')
-      .select('title')
-      .eq('topic_id', topic_id)
-      .order('order_num')
-
-    // ── 4. Also fetch user's personal notes (extra context) ──────
-    const { data: userNotes } = await supabase
-      .from('user_notes')
-      .select('content')
-      .eq('topic_id', topic_id)
-      .eq('user_id', user.id)
+    if (isUUID(topic_id)) {
+      const [notesRes, videosRes, userNotesRes] = await Promise.all([
+        supabase.from('notes').select('title, content').eq('topic_id', topic_id).order('order_num'),
+        supabase.from('videos').select('title').eq('topic_id', topic_id).order('order_num'),
+        supabase.from('user_notes').select('content').eq('topic_id', topic_id).eq('user_id', user.id),
+      ])
+      notes = notesRes.data ?? []
+      videos = videosRes.data ?? []
+      userNotes = userNotesRes.data ?? []
+    }
 
     // Merge all notes content
     const allNotes = [
@@ -86,7 +100,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 6. Save generated questions to the questions table ────────
-    const questionsToInsert = generated.map((q) => ({
+    const questionsToInsert = generated.map((q: any) => ({
       question_text: q.question_text,
       options: q.options,
       correct_answer: q.correct_answer,

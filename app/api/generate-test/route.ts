@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { BRAND } from '@/lib/brand'
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +11,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { type, subject, topic, count = 30, difficulty } = await request.json()
+    const {
+      type,
+      subject,
+      topic,
+      count = 30,
+      difficulty,
+      examTrack = 'gate_cse',
+    } = await request.json()
 
     const validTypes = ['topic', 'subject', 'full']
     if (!validTypes.includes(type)) {
@@ -20,21 +28,24 @@ export async function POST(request: NextRequest) {
     // Build question query
     let query = supabase.from('questions').select('*')
 
+    // If questions table has exam_track column, filter by it (or fallback to all if legacy)
+    if (examTrack && examTrack !== 'all') {
+      query = query.or(`exam_track.eq.${examTrack},exam_track.is.null`)
+    }
+
     if (type === 'topic') {
-      // Filter by subject first, then topic (exact match from DB values)
       if (subject) query = query.eq('subject', subject)
       if (topic) query = query.eq('topic', topic)
     } else if (type === 'subject' && subject) {
       query = query.eq('subject', subject)
     }
-    // type === 'full' → no filter, all subjects
 
     if (difficulty) {
       query = query.eq('difficulty', difficulty)
     }
 
-    const requestedCount = Math.min(Math.max(parseInt(count) || 30, 5), 65)
-    query = query.limit(requestedCount * 3) // Fetch more, then randomly select
+    const requestedCount = Math.min(Math.max(parseInt(count) || 20, 5), 65)
+    query = query.limit(requestedCount * 3)
 
     const { data: questions, error: questionError } = await query
 
@@ -45,15 +56,26 @@ export async function POST(request: NextRequest) {
 
     if (!questions || questions.length === 0) {
       return NextResponse.json({
-        error: 'No questions found for the selected criteria. Try uploading some GATE questions first.'
+        error: `No questions found for the selected ${examTrack.toUpperCase()} criteria. Add or generate practice questions first.`
       }, { status: 404 })
     }
 
-    // Adaptive shuffling: mix difficulties
+    // Adaptive shuffling
     const shuffled = shuffleWithDiversityBias(questions, requestedCount)
 
-    // Generate test title
-    const title = generateTestTitle(type, subject, topic)
+    // Calculate duration based on examination track:
+    // GATE: ~2.7 min per question; CA Foundation MCQ: ~1.2 min; CA Inter/Final: ~2 min
+    let secondsPerQuestion = 160
+    if (examTrack === 'ca_foundation') secondsPerQuestion = 90
+    if (examTrack === 'ca_intermediate' || examTrack === 'ca_final') secondsPerQuestion = 120
+
+    const testDuration = Math.round(shuffled.length * secondsPerQuestion)
+    const title = generateTestTitle(type, examTrack, subject, topic)
+
+    // Determine negative mark rate
+    let negRate = 0.33
+    if (examTrack === 'ca_foundation') negRate = 0.25
+    if (examTrack === 'ca_intermediate' || examTrack === 'ca_final') negRate = 0.0
 
     // Create test record
     const { data: test, error: testError } = await supabase
@@ -64,8 +86,10 @@ export async function POST(request: NextRequest) {
         type,
         subject: subject || null,
         topic: topic || null,
-        duration: Math.round(shuffled.length * (10800 / 65)),
+        duration: testDuration,
         question_count: shuffled.length,
+        exam_track: examTrack,
+        negative_mark_rate: negRate,
       })
       .select()
       .single()
@@ -88,7 +112,6 @@ export async function POST(request: NextRequest) {
 
     if (tqError) {
       console.error('Test questions error:', tqError)
-      // Cleanup test
       await supabase.from('tests').delete().eq('id', test.id)
       return NextResponse.json({ error: 'Failed to setup test questions' }, { status: 500 })
     }
@@ -99,6 +122,7 @@ export async function POST(request: NextRequest) {
       title: test.title,
       questionCount: shuffled.length,
       duration: test.duration,
+      examTrack,
     })
   } catch (error) {
     console.error('Generate test route error:', error)
@@ -107,12 +131,10 @@ export async function POST(request: NextRequest) {
 }
 
 function shuffleWithDiversityBias(questions: Record<string, unknown>[], count: number): Record<string, unknown>[] {
-  // Group by difficulty
   const easy = questions.filter((q) => q.difficulty === 'easy')
   const medium = questions.filter((q) => q.difficulty === 'medium')
   const hard = questions.filter((q) => q.difficulty === 'hard')
 
-  // Approximate GATE distribution: 30% easy, 50% medium, 20% hard
   const easyCount = Math.min(Math.round(count * 0.3), easy.length)
   const hardCount = Math.min(Math.round(count * 0.2), hard.length)
   const mediumCount = Math.min(count - easyCount - hardCount, medium.length)
@@ -123,7 +145,6 @@ function shuffleWithDiversityBias(questions: Record<string, unknown>[], count: n
     ...shuffleArray(hard).slice(0, hardCount),
   ]
 
-  // Fill remaining from any difficulty if needed
   if (selected.length < count) {
     const remaining = questions.filter((q) => !selected.includes(q))
     selected.push(...shuffleArray(remaining).slice(0, count - selected.length))
@@ -141,10 +162,11 @@ function shuffleArray<T>(arr: T[]): T[] {
   return shuffled
 }
 
-function generateTestTitle(type: string, subject?: string, topic?: string): string {
+function generateTestTitle(type: string, track: string, subject?: string, topic?: string): string {
   const date = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-  if (type === 'full') return `Full GATE Mock Test — ${date}`
-  if (type === 'subject') return `${subject || 'Subject'} Test — ${date}`
-  if (type === 'topic') return `${topic || 'Topic'} Quiz — ${date}`
-  return `Test — ${date}`
+  const trackLabel = BRAND.tracks.find(t => t.id === track)?.name || track.toUpperCase()
+  if (type === 'full') return `Full ${trackLabel} Mock Examination — ${date}`
+  if (type === 'subject') return `${trackLabel}: ${subject || 'Subject'} Test — ${date}`
+  if (type === 'topic') return `${trackLabel}: ${topic || 'Topic'} Quiz — ${date}`
+  return `${trackLabel} Test — ${date}`
 }

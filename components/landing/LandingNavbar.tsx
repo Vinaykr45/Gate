@@ -4,9 +4,10 @@ import { ArrowRight, Sun, Moon, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 const NAV_LINKS = [
+  { label: 'Exam Tracks', href: '#tracks' },
+  { label: 'Curriculum Hub', href: '/learn' },
   { label: 'Features', href: '#features' },
-  { label: 'Learning Hub', href: '#hub' },
-  { label: 'How it Works', href: '#how-it-works' },
+  { label: 'Workflow', href: '#how-it-works' },
 ]
 
 export function LandingNavbar() {
@@ -43,13 +44,14 @@ export function LandingNavbar() {
           <div style={{
             width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontWeight: 900, fontSize: 16, color: '#fff',
-            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-            boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+            background: 'linear-gradient(135deg,#0f172a,#4f46e5)',
+            border: '1px solid rgba(99,102,241,0.3)',
+            boxShadow: '0 4px 14px rgba(79,70,229,0.35)',
             flexShrink: 0,
-          }}>G</div>
+          }}>P</div>
           <div>
-            <span className="landing-logo-text" style={{ fontWeight: 800, fontSize: 17 }}>GateFlow </span>
-            <span className="gradient-text hidden sm:inline" style={{ fontWeight: 800, fontSize: 17 }}>Pro</span>
+            <span className="landing-logo-text" style={{ fontWeight: 800, fontSize: 17 }}>PrepAxis </span>
+            <span className="gradient-text hidden sm:inline" style={{ fontWeight: 800, fontSize: 17 }}>AI</span>
           </div>
         </Link>
 

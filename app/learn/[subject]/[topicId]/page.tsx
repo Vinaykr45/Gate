@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm'
 import type { LearningTopic, Video, Note, UserNote, AISummary, LearningProgress } from '@/lib/types'
 import { AddVideoForm } from '@/components/learn/AddVideoForm'
 import { AddCuratedNoteForm } from '@/components/learn/AddCuratedNoteForm'
+import { findRegistryTopic } from '@/lib/curriculum/registry'
 
 interface Props { params: Promise<{ subject: string; topicId: string }> }
 
@@ -51,32 +52,79 @@ export default function TopicDetailPage({ params }: Props) {
   const [fetchedMaterial, setFetchedMaterial] = useState<FetchedMaterial | null>(null)
   const [materialError, setMaterialError] = useState('')
   const [customTopic, setCustomTopic] = useState('')
+  const [savingMaterialNotes, setSavingMaterialNotes] = useState(false)
+  const [savedNotesSuccess, setSavedNotesSuccess] = useState(false)
 
   useEffect(() => {
     params.then(setResolvedParams)
   }, [params])
 
   const load = useCallback(async (topicId: string) => {
-    const [topicsRes, videosRes, notesRes] = await Promise.all([
-      fetch(`/api/learning/topics?topic_id=${topicId}`),
-      fetch(`/api/videos?topic_id=${topicId}`),
-      fetch(`/api/notes?topic_id=${topicId}`),
-    ])
+    try {
+      const [topicsRes, videosRes, notesRes] = await Promise.all([
+        fetch(`/api/learning/topics?topic_id=${topicId}`),
+        fetch(`/api/videos?topic_id=${topicId}`),
+        fetch(`/api/notes?topic_id=${topicId}`),
+      ])
 
-    const [topicsData, videosData, notesData] = await Promise.all([
-      topicsRes.json(), videosRes.json(), notesRes.json(),
-    ])
+      const [topicsData, videosData, notesData] = await Promise.all([
+        topicsRes.json().catch(() => ({})),
+        videosRes.json().catch(() => ({})),
+        notesRes.json().catch(() => ({})),
+      ])
 
-    const found = topicsData.topics?.find((t: LearningTopic) => t.id === topicId)
-    if (!found) { setLoading(false); return }
+      let found = topicsData.topics?.find((t: LearningTopic) => t.id === topicId)
+      if (!found && topicsData.topics && topicsData.topics.length > 0) {
+        found = topicsData.topics[0]
+      }
 
-    setTopic(found)
-    setProgress(found.progress)
-    setVideos(videosData.videos ?? [])
-    setNotes(notesData.notes ?? [])
-    setUserNotes(notesData.userNotes ?? [])
-    setLoading(false)
-  }, [])
+      if (!found) {
+        const reg = findRegistryTopic(topicId, resolvedParams?.subject)
+        if (reg) found = reg as any
+      }
+
+      if (!found && resolvedParams) {
+        const cleanSubject = decodeURIComponent(resolvedParams.subject)
+        const cleanTopic = decodeURIComponent(topicId).replace(/[-_]/g, ' ')
+        found = {
+          id: topicId,
+          subject: cleanSubject,
+          topic: cleanTopic,
+          subtopic: cleanTopic,
+          description: `${cleanSubject} — comprehensive preparation and syllabus breakdown`,
+          order_num: 1,
+          progress: null,
+        } as any
+      }
+
+      if (found) {
+        setTopic(found)
+        setProgress(found.progress)
+      }
+      setVideos(videosData.videos ?? [])
+      setNotes(notesData.notes ?? [])
+      setUserNotes(notesData.userNotes ?? [])
+    } catch {
+      // Offline or network error fallback
+      if (resolvedParams) {
+        const reg = findRegistryTopic(topicId, resolvedParams.subject)
+        const cleanSubject = decodeURIComponent(resolvedParams.subject)
+        const cleanTopic = decodeURIComponent(topicId).replace(/[-_]/g, ' ')
+        const fallbackTopic = reg || {
+          id: topicId,
+          subject: cleanSubject,
+          topic: cleanTopic,
+          subtopic: cleanTopic,
+          description: `${cleanSubject} — comprehensive preparation and syllabus breakdown`,
+          order_num: 1,
+          progress: null,
+        }
+        setTopic(fallbackTopic as any)
+      }
+    } finally {
+      setLoading(false)
+    }
+  }, [resolvedParams])
 
   useEffect(() => {
     if (resolvedParams) load(resolvedParams.topicId)
@@ -169,29 +217,76 @@ export default function TopicDetailPage({ params }: Props) {
   }
 
   const fetchMaterial = async (mode: 'ai' | 'comprehensive' = 'ai') => {
-    if (!topic || fetchingMaterial) return
+    if (fetchingMaterial) return
+    const activeId = topic?.id || resolvedParams?.topicId
+    if (!activeId) return
+
     setFetchingMaterial(true)
     setMaterialError('')
+    setSavedNotesSuccess(false)
     setActiveTab('material')
     try {
       const res = await fetch('/api/learning/fetch-material', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic_id: topic.id, mode, custom_topic: customTopic.trim() || undefined }),
+        body: JSON.stringify({ topic_id: activeId, mode, custom_topic: customTopic.trim() || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to fetch material')
       setFetchedMaterial(data.material)
-      // Reload notes if comprehensive mode auto-saved them
-      if (mode === 'comprehensive' && resolvedParams) {
-        const notesRes = await fetch(`/api/notes?topic_id=${resolvedParams.topicId}`)
+
+      if (mode === 'comprehensive') {
+        setSavedNotesSuccess(true)
+        const notesRes = await fetch(`/api/notes?topic_id=${activeId}`)
         const notesData = await notesRes.json()
         setNotes(notesData.notes ?? [])
+        setUserNotes(notesData.userNotes ?? [])
+        setTimeout(() => setSavedNotesSuccess(false), 5000)
       }
     } catch (err: unknown) {
       setMaterialError(err instanceof Error ? err.message : 'Failed to fetch material')
     } finally {
       setFetchingMaterial(false)
+    }
+  }
+
+  const saveCurrentMaterialToNotes = async () => {
+    if (!fetchedMaterial || savingMaterialNotes) return
+    const activeId = topic?.id || resolvedParams?.topicId
+    if (!activeId || !resolvedParams) return
+
+    setSavingMaterialNotes(true)
+    setMaterialError('')
+    try {
+      const res = await fetch('/api/learning/save-material-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic_id: activeId,
+          material: fetchedMaterial,
+          custom_topic: customTopic.trim() || undefined,
+          topic_meta: {
+            subject: decodeURIComponent(resolvedParams.subject),
+            topic: topic?.topic || decodeURIComponent(activeId).replace(/[-_]/g, ' '),
+            subtopic: topic?.subtopic || decodeURIComponent(activeId).replace(/[-_]/g, ' '),
+            description: topic?.description,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to save notes')
+
+      setSavedNotesSuccess(true)
+      // Reload notes list so user can see them immediately in Notes tab
+      const notesRes = await fetch(`/api/notes?topic_id=${activeId}`)
+      const notesData = await notesRes.json()
+      setNotes(notesData.notes ?? [])
+      setUserNotes(notesData.userNotes ?? [])
+      setTimeout(() => setSavedNotesSuccess(false), 5000)
+    } catch (err: unknown) {
+      setMaterialError(err instanceof Error ? err.message : 'Failed to save notes')
+    } finally {
+      setSavingMaterialNotes(false)
     }
   }
 
@@ -216,7 +311,17 @@ export default function TopicDetailPage({ params }: Props) {
     )
   }
 
-  if (!topic || !resolvedParams) return notFound()
+  if (!resolvedParams) return notFound()
+
+  const activeTopic = topic || {
+    id: resolvedParams.topicId,
+    subject: decodeURIComponent(resolvedParams.subject),
+    topic: decodeURIComponent(resolvedParams.topicId).replace(/[-_]/g, ' '),
+    subtopic: decodeURIComponent(resolvedParams.topicId).replace(/[-_]/g, ' '),
+    description: `${decodeURIComponent(resolvedParams.subject)} preparation and concepts`,
+    order_num: 1,
+    progress: null,
+  }
 
   const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview', label: 'Overview', icon: <BookOpen className="w-4 h-4" /> },
@@ -239,19 +344,19 @@ export default function TopicDetailPage({ params }: Props) {
           {decodeURIComponent(resolvedParams.subject)}
         </Link>
         <span>/</span>
-        <span style={{ color: 'var(--text-primary)' }}>{topic.subtopic}</span>
+        <span style={{ color: 'var(--text-primary)' }}>{activeTopic.subtopic}</span>
       </div>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
-            {topic.subject} · {topic.topic}
+            {activeTopic.subject} · {activeTopic.topic}
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{topic.subtopic}</h1>
-          {topic.description && (
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{activeTopic.subtopic}</h1>
+          {activeTopic.description && (
             <p className="mt-2 text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              {topic.description}
+              {activeTopic.description}
             </p>
           )}
         </div>
@@ -650,12 +755,30 @@ export default function TopicDetailPage({ params }: Props) {
                   className="btn-secondary text-sm px-4 py-2.5 flex-1 sm:flex-none flex items-center justify-center gap-2">
                   <Sparkles className="w-4 h-4" /> Regenerate
                 </button>
-                <button onClick={() => fetchMaterial('comprehensive')} disabled={fetchingMaterial}
-                  className="btn-primary text-sm px-4 py-2.5 flex-1 sm:flex-none flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg,#2563eb,#4f46e5)' }}>
-                  <Globe className="w-4 h-4" /> Save as Notes
+                <button onClick={saveCurrentMaterialToNotes} disabled={savingMaterialNotes}
+                  className="btn-primary text-sm px-4 py-2.5 flex-1 sm:flex-none flex items-center justify-center gap-2 transition-all"
+                  style={{ background: savedNotesSuccess ? '#059669' : 'linear-gradient(135deg,#2563eb,#4f46e5)' }}>
+                  {savingMaterialNotes ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : savedNotesSuccess ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <Bookmark className="w-4 h-4" />
+                  )}
+                  {savedNotesSuccess ? 'Saved to Notes!' : savingMaterialNotes ? 'Saving Notes...' : 'Save as Notes'}
                 </button>
               </div>
+            </div>
+          )}
+
+          {savedNotesSuccess && (
+            <div className="rounded-xl p-3 text-xs flex items-center justify-between animate-fade-in" style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.25)' }}>
+              <span className="flex items-center gap-2 font-semibold">
+                <CheckCircle2 className="w-4 h-4" /> Material saved to Notes tab successfully!
+              </span>
+              <button onClick={() => setActiveTab('notes')} className="underline font-bold text-xs hover:text-white cursor-pointer">
+                View in Notes ({notes.length + userNotes.length}) →
+              </button>
             </div>
           )}
 
@@ -780,7 +903,7 @@ export default function TopicDetailPage({ params }: Props) {
                 </div>
                 <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>AI Learning Material</h3>
                 <p className="text-sm mb-8 max-w-md mx-auto" style={{ color: 'var(--text-secondary)' }}>
-                  Generate comprehensive study material for <strong>{topic.subtopic}</strong> including explanations, GATE patterns, worked examples, mnemonics, and resources.
+                  Generate comprehensive study material for <strong>{activeTopic.subtopic}</strong> including explanations, GATE patterns, worked examples, mnemonics, and resources.
                 </p>
 
                 <div className="max-w-md mx-auto p-5 rounded-2xl border mb-8 text-left" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border-subtle)' }}>
@@ -792,7 +915,7 @@ export default function TopicDetailPage({ params }: Props) {
                     type="text" 
                     value={customTopic}
                     onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder={`E.g. specifically for ${topic.subtopic}...`}
+                    placeholder={`E.g. specifically for ${activeTopic.subtopic}...`}
                     className="input text-sm w-full"
                   />
                 </div>
